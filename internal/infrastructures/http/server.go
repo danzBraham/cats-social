@@ -12,6 +12,7 @@ import (
 	"github.com/danzbraham/cats-social/internal/interfaces/http/controllers"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
+	"github.com/go-playground/validator/v10"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -40,11 +41,12 @@ func (s *APIServer) Launch() error {
 	// Helpers
 	passwordHasher := securities_impl.NewBcryptPasswordHasher()
 	authTokenManager := securities_impl.NewJWTTokenManager([]byte(os.Getenv("JWT_SECRET")))
+	validator := securities_impl.NewGoValidator(validator.New(validator.WithRequiredStructEnabled()))
 
 	// User domain
 	userRepository := repositories_impl.NewUserRepositoryPostgres(s.DB)
 	userUsecase := usecases.NewUserUsecase(userRepository, passwordHasher, authTokenManager)
-	userController := controllers.NewUserController(userUsecase)
+	userController := controllers.NewUserController(userUsecase, validator)
 
 	r.Route("/v1", func(r chi.Router) {
 		r.Mount("/user", userController.Routes())

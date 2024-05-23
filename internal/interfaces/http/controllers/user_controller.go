@@ -5,20 +5,24 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/danzbraham/cats-social/internal/applications/securities"
 	"github.com/danzbraham/cats-social/internal/applications/usecases"
 	user_exception "github.com/danzbraham/cats-social/internal/commons/exceptions/users"
 	http_common "github.com/danzbraham/cats-social/internal/commons/http"
-	validator_common "github.com/danzbraham/cats-social/internal/commons/validator"
 	user_entity "github.com/danzbraham/cats-social/internal/domains/entities/users"
 	"github.com/go-chi/chi/v5"
 )
 
 type UserController struct {
-	Usecase usecases.UserUsecase
+	Usecase   usecases.UserUsecase
+	Validator securities.Validator
 }
 
-func NewUserController(usecase usecases.UserUsecase) *UserController {
-	return &UserController{Usecase: usecase}
+func NewUserController(usecase usecases.UserUsecase, validator securities.Validator) *UserController {
+	return &UserController{
+		Usecase:   usecase,
+		Validator: validator,
+	}
 }
 
 func (c *UserController) Routes() chi.Router {
@@ -38,7 +42,7 @@ func (c *UserController) handleRegisterUser(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	if err := validator_common.ValidatePayload(payload); err != nil {
+	if err := c.Validator.ValidatePayload(payload); err != nil {
 		http_common.ResponseError(w, http.StatusBadRequest, err.Error(), "Request doesn't pass validation")
 		return
 	}
@@ -71,7 +75,7 @@ func (c *UserController) handleLoginUser(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	if err := validator_common.ValidatePayload(payload); err != nil {
+	if err := c.Validator.ValidatePayload(payload); err != nil {
 		http_common.ResponseError(w, http.StatusBadRequest, err.Error(), "Request doesn't pass validation")
 		return
 	}
