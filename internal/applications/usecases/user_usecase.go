@@ -63,13 +63,11 @@ func (uc *UserUsecaseImpl) RegisterUser(ctx context.Context, payload *user_entit
 		return nil, err
 	}
 
-	res := &user_entity.RegisterUserResponse{
+	return &user_entity.RegisterUserResponse{
 		Email:       user.Email,
 		Name:        user.Email,
 		AccessToken: accessToken,
-	}
-
-	return res, nil
+	}, nil
 }
 
 func (uc *UserUsecaseImpl) LoginUser(ctx context.Context, payload *user_entity.LoginUserRequest) (*user_entity.LoginUserResponse, error) {
