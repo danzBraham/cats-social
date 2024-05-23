@@ -63,7 +63,6 @@ func (uc *UserUsecaseImpl) RegisterUser(ctx context.Context, payload *user_entit
 	}
 
 	res := &user_entity.RegisterUserResponse{
-		ID:          user.ID,
 		Email:       user.Email,
 		Name:        user.Email,
 		AccessToken: accessToken,

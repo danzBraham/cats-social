@@ -14,7 +14,6 @@ type RegisterUserRequest struct {
 }
 
 type RegisterUserResponse struct {
-	ID          string `json:"id"`
 	Email       string `json:"email"`
 	Name        string `json:"name"`
 	AccessToken string `json:"accessToken"`
