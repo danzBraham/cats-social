@@ -48,20 +48,22 @@ func (s *APIServer) Launch() error {
 	userUsecase := usecases.NewUserUsecase(userRepository, passwordHasher, authTokenManager)
 	userController := controllers.NewUserController(userUsecase, validator)
 
+	// Cat domain
+	catRepository := repositories_impl.NewCatRepositoryImpl(s.DB)
+	catUsecase := usecases.NewCatUsecase(catRepository)
+	catController := controllers.NewCatController(catUsecase, validator)
+
 	r.Route("/v1", func(r chi.Router) {
 		r.Mount("/user", userController.Routes())
+		r.Mount("/cat", catController.Routes())
 	})
 
 	r.NotFound(func(w http.ResponseWriter, r *http.Request) {
-		http_common.EncodeJSON(w, http.StatusNotFound, &http_common.ResponseBody{
-			Message: "Route does not exists",
-		})
+		http_common.ResponseError(w, http.StatusNotFound, "Not found error", "Route does not exists")
 	})
 
 	r.MethodNotAllowed(func(w http.ResponseWriter, r *http.Request) {
-		http_common.EncodeJSON(w, http.StatusMethodNotAllowed, &http_common.ResponseBody{
-			Message: "Method is not allowed",
-		})
+		http_common.ResponseError(w, http.StatusMethodNotAllowed, "Method not allowed error", "Method is not allowed")
 	})
 
 	server := http.Server{
