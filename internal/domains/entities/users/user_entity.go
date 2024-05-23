@@ -18,3 +18,14 @@ type RegisterUserResponse struct {
 	Name        string `json:"name"`
 	AccessToken string `json:"accessToken"`
 }
+
+type LoginUserRequest struct {
+	Email    string `json:"email" validate:"required,email"`
+	Password string `json:"password" validate:"required,min=5,max=15"`
+}
+
+type LoginUserResponse struct {
+	Email       string `json:"email"`
+	Name        string `json:"name"`
+	AccessToken string `json:"accessToken"`
+}

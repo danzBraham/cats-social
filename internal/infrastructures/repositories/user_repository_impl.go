@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 
+	user_exception "github.com/danzbraham/cats-social/internal/commons/exceptions/users"
 	user_entity "github.com/danzbraham/cats-social/internal/domains/entities/users"
 	"github.com/danzbraham/cats-social/internal/domains/repositories"
 	"github.com/jackc/pgx/v5"
@@ -38,4 +39,17 @@ func (r *UserRepositoryPostgres) CreateUser(ctx context.Context, user *user_enti
 		return err
 	}
 	return nil
+}
+
+func (r *UserRepositoryPostgres) GetUserByEmail(ctx context.Context, email string) (*user_entity.User, error) {
+	user := &user_entity.User{}
+	query := `SELECT id, email, name, password FROM users WHERE email = $1`
+	err := r.DB.QueryRow(ctx, query, email).Scan(&user.ID, &user.Email, &user.Name, &user.Password)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, user_exception.ErrUserNotFound
+	}
+	if err != nil {
+		return nil, err
+	}
+	return user, nil
 }

@@ -14,6 +14,7 @@ import (
 
 type UserUsecase interface {
 	RegisterUser(ctx context.Context, payload *user_entity.RegisterUserRequest) (*user_entity.RegisterUserResponse, error)
+	LoginUser(ctx context.Context, payload *user_entity.LoginUserRequest) (*user_entity.LoginUserResponse, error)
 }
 
 type UserUsecaseImpl struct {
@@ -69,4 +70,27 @@ func (uc *UserUsecaseImpl) RegisterUser(ctx context.Context, payload *user_entit
 	}
 
 	return res, nil
+}
+
+func (uc *UserUsecaseImpl) LoginUser(ctx context.Context, payload *user_entity.LoginUserRequest) (*user_entity.LoginUserResponse, error) {
+	user, err := uc.Repository.GetUserByEmail(ctx, payload.Email)
+	if err != nil {
+		return nil, err
+	}
+
+	err = uc.PasswordHasher.VerifyPassword(user.Password, payload.Password)
+	if err != nil {
+		return nil, user_exception.ErrInvalidPassword
+	}
+
+	accessToken, err := uc.AuthTokenManager.GenerateToken(2*time.Hour, user.ID)
+	if err != nil {
+		return nil, err
+	}
+
+	return &user_entity.LoginUserResponse{
+		Email:       user.Email,
+		Name:        user.Name,
+		AccessToken: accessToken,
+	}, nil
 }
