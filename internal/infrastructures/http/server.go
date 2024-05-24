@@ -51,7 +51,7 @@ func (s *APIServer) Launch() error {
 	// Cat domain
 	catRepository := repositories_impl.NewCatRepositoryImpl(s.DB)
 	catUsecase := usecases.NewCatUsecase(catRepository)
-	catController := controllers.NewCatController(catUsecase, validator)
+	catController := controllers.NewCatController(catUsecase, validator, authTokenManager)
 
 	r.Route("/v1", func(r chi.Router) {
 		r.Mount("/user", userController.Routes())

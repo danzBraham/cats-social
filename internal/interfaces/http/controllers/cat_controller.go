@@ -7,24 +7,29 @@ import (
 	"github.com/danzbraham/cats-social/internal/applications/usecases"
 	http_common "github.com/danzbraham/cats-social/internal/commons/http"
 	cat_entity "github.com/danzbraham/cats-social/internal/domains/entities/cats"
+	"github.com/danzbraham/cats-social/internal/interfaces/http/middlewares"
 	"github.com/go-chi/chi/v5"
 )
 
 type CatController struct {
-	Usecase   usecases.CatUsecase
-	Validator securities.Validator
+	Usecase          usecases.CatUsecase
+	Validator        securities.Validator
+	AuthTokenManager securities.AuthTokenManager
 }
 
-func NewCatController(usecase usecases.CatUsecase, validator securities.Validator) *CatController {
+func NewCatController(usecase usecases.CatUsecase, validator securities.Validator, authTokenManager securities.AuthTokenManager) *CatController {
 	return &CatController{
-		Usecase:   usecase,
-		Validator: validator,
+		Usecase:          usecase,
+		Validator:        validator,
+		AuthTokenManager: authTokenManager,
 	}
 }
 
 func (c *CatController) Routes() chi.Router {
 	r := chi.NewRouter()
+	authMiddleware := middlewares.NewAuthMiddleware(c.AuthTokenManager)
 
+	r.Use(authMiddleware.Middleware)
 	r.Post("/", c.handleAddCat)
 
 	return r
