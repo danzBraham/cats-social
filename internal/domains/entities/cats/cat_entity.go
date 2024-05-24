@@ -30,8 +30,7 @@ type Cat struct {
 	AgeInMonth  int      `json:"ageInMonth"`
 	Description string   `json:"description"`
 	ImageUrls   []string `json:"imageUrls"`
-	CreatedAt   string   `json:"createdAt"`
-	UpdatedAt   string   `json:"updatedAt"`
+	OwnerId     string   `json:"ownerId"`
 }
 
 type AddCatRequest struct {
@@ -40,7 +39,8 @@ type AddCatRequest struct {
 	Sex         Sex      `json:"sex" validate:"required,oneof='male' 'female'"`
 	AgeInMonth  int      `json:"ageInMonth" validate:"required,min=1,max=120082"`
 	Description string   `json:"description" validate:"required,min=1,max=200"`
-	ImageUrls   []string `json:"imageUrls" validate:"required,dive,required,imageurl"`
+	ImageUrls   []string `json:"imageUrls" validate:"required,min=1,dive,required,imageurl"`
+	OwnerId     string   `validate:"required,len=26"`
 }
 
 type AddCatResponse struct {

@@ -36,7 +36,12 @@ func (c *CatController) Routes() chi.Router {
 }
 
 func (c *CatController) handleAddCat(w http.ResponseWriter, r *http.Request) {
-	payload := &cat_entity.AddCatRequest{}
+	userId, ok := r.Context().Value(middlewares.ContextUserIdKey).(string)
+	if !ok {
+		http_common.ResponseError(w, http.StatusBadRequest, "User ID type assertion failed", "User ID not found in context")
+		return
+	}
+	payload := &cat_entity.AddCatRequest{OwnerId: userId}
 
 	if err := http_common.DecodeJSON(r, payload); err != nil {
 		http_common.ResponseError(w, http.StatusBadRequest, err.Error(), "Failed to decode JSON")

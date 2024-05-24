@@ -29,10 +29,10 @@ CREATE TABLE IF NOT EXISTS cats (
   race cat_races NOT NULL,
   sex cat_sex NOT NULL,
   age_in_month INT NOT NULL CHECK (age_in_month BETWEEN 1 AND 120082),
-  descrption VARCHAR(200) NOT NULL,
-  img_urls TEXT[] NOT NULL CHECK (array_length(img_urls, 1) >= 1),
+  description VARCHAR(200) NOT NULL,
+  image_urls TEXT[] NOT NULL CHECK (array_length(image_urls, 1) >= 1),
   owner_id VARCHAR(26) NOT NULL,
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  created_at TIMESTAMP DEFAULT NOW(),
+  updated_at TIMESTAMP DEFAULT NOW(),
   FOREIGN KEY (owner_id) REFERENCES users(id) ON DELETE NO ACTION ON UPDATE NO ACTION
 );

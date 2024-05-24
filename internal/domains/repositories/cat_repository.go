@@ -7,5 +7,5 @@ import (
 )
 
 type CatRepository interface {
-	CreateCat(ctx context.Context, cat *cat_entity.Cat) error
+	CreateCat(ctx context.Context, cat *cat_entity.Cat) (createdAt string, err error)
 }
