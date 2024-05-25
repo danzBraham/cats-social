@@ -48,9 +48,15 @@ func (s *APIServer) Launch() error {
 	catService := services.NewCatService(catRepository)
 	catController := controllers.NewCatController(catService)
 
+	// Match domain
+	matchRepository := repositories.NewMatchRepository(s.DB)
+	matchService := services.NewMatchService(catRepository, matchRepository)
+	matchController := controllers.NewMatchController(matchService)
+
 	r.Route("/v1", func(r chi.Router) {
 		r.Mount("/user", userController.Routes())
 		r.Mount("/cat", catController.Routes())
+		r.Mount("/match", matchController.Routes())
 	})
 
 	r.NotFound(func(w http.ResponseWriter, r *http.Request) {

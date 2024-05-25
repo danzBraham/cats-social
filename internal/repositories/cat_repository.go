@@ -18,6 +18,7 @@ type CatRepository interface {
 	CreateCat(ctx context.Context, cat *cat_entity.Cat) (createdAt string, err error)
 	GetCats(ctx context.Context, params *cat_entity.CatQueryParams) ([]*cat_entity.GetCatReponse, error)
 	GetCatById(ctx context.Context, id string) (*cat_entity.Cat, error)
+	GetCatByOwnerId(ctx context.Context, id string) (*cat_entity.Cat, error)
 	UpdateCat(ctx context.Context, cat *cat_entity.UpdateCatRequest) error
 	DeleteCat(ctx context.Context, id string) error
 }
@@ -192,9 +193,10 @@ func (r *CatRepositoryImpl) GetCats(ctx context.Context, params *cat_entity.CatQ
 
 func (r *CatRepositoryImpl) GetCatById(ctx context.Context, id string) (*cat_entity.Cat, error) {
 	var cat cat_entity.Cat
-	query := `SELECT id, name, race, sex, age_in_month, description, image_urls, owner_id
-						FROM cats`
-	err := r.DB.QueryRow(ctx, query).Scan(
+	query := `SELECT id, name, race, sex, age_in_month, description, image_urls, has_matched, owned, owner_id
+						FROM cats
+						WHERE id = $1 AND is_deleted = false`
+	err := r.DB.QueryRow(ctx, query, id).Scan(
 		&cat.Id,
 		&cat.Name,
 		&cat.Race,
@@ -202,6 +204,34 @@ func (r *CatRepositoryImpl) GetCatById(ctx context.Context, id string) (*cat_ent
 		&cat.AgeInMonth,
 		&cat.Description,
 		&cat.ImageUrls,
+		&cat.HasMatched,
+		&cat.Owned,
+		&cat.OwnerId,
+	)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, cat_exception.ErrCatNotFound
+	}
+	if err != nil {
+		return nil, err
+	}
+	return &cat, nil
+}
+
+func (r *CatRepositoryImpl) GetCatByOwnerId(ctx context.Context, id string) (*cat_entity.Cat, error) {
+	var cat cat_entity.Cat
+	query := `SELECT id, name, race, sex, age_in_month, description, image_urls, has_matched, owned, owner_id
+						FROM cats
+						WHERE owner_id = $1 AND is_deleted = false`
+	err := r.DB.QueryRow(ctx, query, id).Scan(
+		&cat.Id,
+		&cat.Name,
+		&cat.Race,
+		&cat.Sex,
+		&cat.AgeInMonth,
+		&cat.Description,
+		&cat.ImageUrls,
+		&cat.HasMatched,
+		&cat.Owned,
 		&cat.OwnerId,
 	)
 	if errors.Is(err, pgx.ErrNoRows) {

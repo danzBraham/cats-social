@@ -30,6 +30,8 @@ type Cat struct {
 	AgeInMonth  int      `json:"ageInMonth"`
 	Description string   `json:"description"`
 	ImageUrls   []string `json:"imageUrls"`
+	HasMatched  bool     `json:"has_matched"`
+	Owned       bool     `json:"owned"`
 	OwnerId     string   `json:"ownerId"`
 }
 
