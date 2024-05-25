@@ -10,6 +10,7 @@ import (
 
 type CatService interface {
 	AddCat(ctx context.Context, payload *cat_entity.AddCatRequest) (*cat_entity.AddCatResponse, error)
+	GetCats(ctx context.Context, params *cat_entity.CatQueryParams) ([]*cat_entity.GetCatReponse, error)
 }
 
 type CatServiceImpl struct {
@@ -20,7 +21,7 @@ func NewCatService(repository repositories.CatRepository) CatService {
 	return &CatServiceImpl{Repository: repository}
 }
 
-func (uc *CatServiceImpl) AddCat(ctx context.Context, payload *cat_entity.AddCatRequest) (*cat_entity.AddCatResponse, error) {
+func (s *CatServiceImpl) AddCat(ctx context.Context, payload *cat_entity.AddCatRequest) (*cat_entity.AddCatResponse, error) {
 	cat := &cat_entity.Cat{
 		ID:          ulid.Make().String(),
 		Name:        payload.Name,
@@ -32,7 +33,7 @@ func (uc *CatServiceImpl) AddCat(ctx context.Context, payload *cat_entity.AddCat
 		OwnerId:     payload.OwnerId,
 	}
 
-	createdAt, err := uc.Repository.CreateCat(ctx, cat)
+	createdAt, err := s.Repository.CreateCat(ctx, cat)
 	if err != nil {
 		return nil, err
 	}
@@ -41,4 +42,8 @@ func (uc *CatServiceImpl) AddCat(ctx context.Context, payload *cat_entity.AddCat
 		ID:        cat.ID,
 		CreatedAt: createdAt,
 	}, nil
+}
+
+func (s *CatServiceImpl) GetCats(ctx context.Context, params *cat_entity.CatQueryParams) ([]*cat_entity.GetCatReponse, error) {
+	return s.Repository.GetCats(ctx, params)
 }
