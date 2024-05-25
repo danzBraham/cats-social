@@ -10,7 +10,8 @@ import (
 )
 
 type MatchService interface {
-	MatchCat(ctx context.Context, payload *match_entity.MatchCatRequest) error
+	RequestMatchCat(ctx context.Context, payload *match_entity.MatchCatRequest) error
+	GetMatchCatRequests(ctx context.Context) ([]*match_entity.GetMatchCatResponse, error)
 }
 
 type MatchServiceImpl struct {
@@ -25,7 +26,7 @@ func NewMatchService(catRepository repositories.CatRepository, matchRepository r
 	}
 }
 
-func (s *MatchServiceImpl) MatchCat(ctx context.Context, payload *match_entity.MatchCatRequest) error {
+func (s *MatchServiceImpl) RequestMatchCat(ctx context.Context, payload *match_entity.MatchCatRequest) error {
 	isMatchCatIdExists, err := s.CatRepository.VerifyId(ctx, payload.MatchCatId)
 	if err != nil {
 		return err
@@ -88,4 +89,8 @@ func (s *MatchServiceImpl) MatchCat(ctx context.Context, payload *match_entity.M
 	}
 
 	return nil
+}
+
+func (s *MatchServiceImpl) GetMatchCatRequests(ctx context.Context) ([]*match_entity.GetMatchCatResponse, error) {
+	return s.MatchRepository.GetMatchCatRequests(ctx)
 }

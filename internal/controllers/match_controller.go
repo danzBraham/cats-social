@@ -26,6 +26,7 @@ func (c *MatchController) Routes() chi.Router {
 
 	r.Use(middlewares.AuthMiddleware)
 	r.Post("/", c.handleMatchCatRequest)
+	r.Get("/", c.handleGetMatchCatRequests)
 
 	return r
 }
@@ -48,7 +49,7 @@ func (c *MatchController) handleMatchCatRequest(w http.ResponseWriter, r *http.R
 		return
 	}
 
-	err := c.Service.MatchCat(r.Context(), payload)
+	err := c.Service.RequestMatchCat(r.Context(), payload)
 	if errors.Is(err, match_exception.ErrMatchCatIdIsNotFound) {
 		http_common.ResponseError(w, http.StatusNotFound, "Not found error", err.Error())
 		return
@@ -79,4 +80,14 @@ func (c *MatchController) handleMatchCatRequest(w http.ResponseWriter, r *http.R
 	}
 
 	http_common.ResponseSuccess(w, http.StatusCreated, "successfully send match request", nil)
+}
+
+func (c *MatchController) handleGetMatchCatRequests(w http.ResponseWriter, r *http.Request) {
+	matchCatsResponse, err := c.Service.GetMatchCatRequests(r.Context())
+	if err != nil {
+		http_common.ResponseError(w, http.StatusInternalServerError, "Internal server error", err.Error())
+		return
+	}
+
+	http_common.ResponseSuccess(w, http.StatusCreated, "successfully get match requests", matchCatsResponse)
 }

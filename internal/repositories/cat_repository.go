@@ -193,7 +193,7 @@ func (r *CatRepositoryImpl) GetCats(ctx context.Context, params *cat_entity.CatQ
 
 func (r *CatRepositoryImpl) GetCatById(ctx context.Context, id string) (*cat_entity.Cat, error) {
 	var cat cat_entity.Cat
-	query := `SELECT id, name, race, sex, age_in_month, description, image_urls, has_matched, owned, owner_id
+	query := `SELECT id, name, race, sex, age_in_month, description, image_urls, has_matched, owner_id
 						FROM cats
 						WHERE id = $1 AND is_deleted = false`
 	err := r.DB.QueryRow(ctx, query, id).Scan(
@@ -205,7 +205,6 @@ func (r *CatRepositoryImpl) GetCatById(ctx context.Context, id string) (*cat_ent
 		&cat.Description,
 		&cat.ImageUrls,
 		&cat.HasMatched,
-		&cat.Owned,
 		&cat.OwnerId,
 	)
 	if errors.Is(err, pgx.ErrNoRows) {
@@ -219,7 +218,7 @@ func (r *CatRepositoryImpl) GetCatById(ctx context.Context, id string) (*cat_ent
 
 func (r *CatRepositoryImpl) GetCatByOwnerId(ctx context.Context, id string) (*cat_entity.Cat, error) {
 	var cat cat_entity.Cat
-	query := `SELECT id, name, race, sex, age_in_month, description, image_urls, has_matched, owned, owner_id
+	query := `SELECT id, name, race, sex, age_in_month, description, image_urls, has_matched, owner_id
 						FROM cats
 						WHERE owner_id = $1 AND is_deleted = false`
 	err := r.DB.QueryRow(ctx, query, id).Scan(
@@ -231,7 +230,6 @@ func (r *CatRepositoryImpl) GetCatByOwnerId(ctx context.Context, id string) (*ca
 		&cat.Description,
 		&cat.ImageUrls,
 		&cat.HasMatched,
-		&cat.Owned,
 		&cat.OwnerId,
 	)
 	if errors.Is(err, pgx.ErrNoRows) {
