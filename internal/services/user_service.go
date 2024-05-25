@@ -27,8 +27,8 @@ func NewUserService(repository repositories.UserRepository) UserService {
 	return &UserServiceImpl{Repository: repository}
 }
 
-func (uc *UserServiceImpl) RegisterUser(ctx context.Context, payload *user_entity.RegisterUserRequest) (*user_entity.RegisterUserResponse, error) {
-	isEmailExists, err := uc.Repository.VerifyEmail(ctx, payload.Email)
+func (s *UserServiceImpl) RegisterUser(ctx context.Context, payload *user_entity.RegisterUserRequest) (*user_entity.RegisterUserResponse, error) {
+	isEmailExists, err := s.Repository.VerifyEmail(ctx, payload.Email)
 	if err != nil {
 		return nil, err
 	}
@@ -50,7 +50,7 @@ func (uc *UserServiceImpl) RegisterUser(ctx context.Context, payload *user_entit
 		Password: hashedPassword,
 	}
 
-	if err := uc.Repository.CreateUser(ctx, user); err != nil {
+	if err := s.Repository.CreateUser(ctx, user); err != nil {
 		return nil, err
 	}
 
@@ -66,8 +66,8 @@ func (uc *UserServiceImpl) RegisterUser(ctx context.Context, payload *user_entit
 	}, nil
 }
 
-func (uc *UserServiceImpl) LoginUser(ctx context.Context, payload *user_entity.LoginUserRequest) (*user_entity.LoginUserResponse, error) {
-	user, err := uc.Repository.GetUserByEmail(ctx, payload.Email)
+func (s *UserServiceImpl) LoginUser(ctx context.Context, payload *user_entity.LoginUserRequest) (*user_entity.LoginUserResponse, error) {
+	user, err := s.Repository.GetUserByEmail(ctx, payload.Email)
 	if err != nil {
 		return nil, err
 	}
