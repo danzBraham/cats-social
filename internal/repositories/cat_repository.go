@@ -3,7 +3,6 @@ package repositories
 import (
 	"context"
 	"errors"
-	"fmt"
 	"strconv"
 	"strings"
 	"time"
@@ -20,6 +19,7 @@ type CatRepository interface {
 	GetCats(ctx context.Context, params *cat_entity.CatQueryParams) ([]*cat_entity.GetCatReponse, error)
 	GetCatById(ctx context.Context, id string) (*cat_entity.Cat, error)
 	UpdateCat(ctx context.Context, cat *cat_entity.UpdateCatRequest) error
+	DeleteCat(ctx context.Context, id string) error
 }
 
 type CatRepositoryImpl struct {
@@ -32,7 +32,7 @@ func NewCatRepository(db *pgxpool.Pool) CatRepository {
 
 func (r *CatRepositoryImpl) VerifyId(ctx context.Context, id string) (bool, error) {
 	var isIdExists int
-	query := `SELECT 1 FROM cats WHERE id = $1`
+	query := `SELECT 1 FROM cats WHERE id = $1 AND is_deleted = false`
 	err := r.DB.QueryRow(ctx, query, id).Scan(&isIdExists)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return false, nil
@@ -158,7 +158,6 @@ func (r *CatRepositoryImpl) GetCats(ctx context.Context, params *cat_entity.CatQ
 
 	query += ` ORDER BY created_at DESC LIMIT $` + strconv.Itoa(argId) + ` OFFSET $` + strconv.Itoa(argId+1)
 	args = append(args, params.Limit, params.Offset)
-	fmt.Println(query)
 
 	rows, err := r.DB.Query(ctx, query, args...)
 	if err != nil {
@@ -219,6 +218,15 @@ func (r *CatRepositoryImpl) UpdateCat(ctx context.Context, cat *cat_entity.Updat
 						SET name = $1, race = $2, sex = $3, age_in_month = $4, description = $5, image_urls = $6, updated_at = NOW()
 						WHERE id = $7`
 	_, err := r.DB.Exec(ctx, query, &cat.Name, &cat.Race, &cat.Sex, &cat.AgeInMonth, &cat.Description, &cat.ImageUrls, &cat.Id)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (r *CatRepositoryImpl) DeleteCat(ctx context.Context, id string) error {
+	query := `UPDATE cats SET is_deleted = true WHERE id = $1`
+	_, err := r.DB.Exec(ctx, query, id)
 	if err != nil {
 		return err
 	}

@@ -13,6 +13,7 @@ type CatService interface {
 	AddCat(ctx context.Context, payload *cat_entity.AddCatRequest) (*cat_entity.AddCatResponse, error)
 	GetCats(ctx context.Context, params *cat_entity.CatQueryParams) ([]*cat_entity.GetCatReponse, error)
 	UpdateCat(ctx context.Context, payload *cat_entity.UpdateCatRequest) error
+	DeleteCat(ctx context.Context, payload *cat_entity.DeleteCatRequest) error
 }
 
 type CatServiceImpl struct {
@@ -60,6 +61,23 @@ func (s *CatServiceImpl) UpdateCat(ctx context.Context, payload *cat_entity.Upda
 	}
 
 	err = s.Repository.UpdateCat(ctx, payload)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (s *CatServiceImpl) DeleteCat(ctx context.Context, payload *cat_entity.DeleteCatRequest) error {
+	isIdExists, err := s.Repository.VerifyId(ctx, payload.Id)
+	if err != nil {
+		return err
+	}
+	if !isIdExists {
+		return cat_exception.ErrCatIdIsNotFound
+	}
+
+	err = s.Repository.DeleteCat(ctx, payload.Id)
 	if err != nil {
 		return err
 	}

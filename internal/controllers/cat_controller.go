@@ -28,6 +28,7 @@ func (c *CatController) Routes() chi.Router {
 	r.Post("/", c.handleAddCat)
 	r.Get("/", c.handleGetCats)
 	r.Put("/{catId}", c.handleUpdateCat)
+	r.Delete("/{catId}", c.handleDeleteCat)
 
 	return r
 }
@@ -115,5 +116,27 @@ func (c *CatController) handleUpdateCat(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	http_common.ResponseSuccess(w, http.StatusCreated, "successfully update cat", nil)
+	http_common.ResponseSuccess(w, http.StatusOK, "successfully update cat", nil)
+}
+
+func (c *CatController) handleDeleteCat(w http.ResponseWriter, r *http.Request) {
+	catId := chi.URLParam(r, "catId")
+	payload := &cat_entity.DeleteCatRequest{Id: catId}
+
+	if err := validator.ValidatePayload(payload); err != nil {
+		http_common.ResponseError(w, http.StatusBadRequest, err.Error(), "Request doesn't pass validation")
+		return
+	}
+
+	err := c.Service.DeleteCat(r.Context(), payload)
+	if errors.Is(err, cat_exception.ErrCatIdIsNotFound) {
+		http_common.ResponseError(w, http.StatusNotFound, "Not found error", err.Error())
+		return
+	}
+	if err != nil {
+		http_common.ResponseError(w, http.StatusInternalServerError, "Internal server error", err.Error())
+		return
+	}
+
+	http_common.ResponseSuccess(w, http.StatusOK, "successfully delete cat", nil)
 }

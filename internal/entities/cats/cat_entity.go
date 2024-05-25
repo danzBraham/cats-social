@@ -81,3 +81,7 @@ type UpdateCatRequest struct {
 	Description string   `json:"description" validate:"required,min=1,max=200"`
 	ImageUrls   []string `json:"imageUrls" validate:"required,min=1,dive,required,imageurl"`
 }
+
+type DeleteCatRequest struct {
+	Id string `json:"id" validate:"required,len=26"`
+}
