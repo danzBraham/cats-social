@@ -8,7 +8,7 @@ import (
 	user_exception "github.com/danzbraham/cats-social/internal/commons/exceptions/users"
 	http_common "github.com/danzbraham/cats-social/internal/commons/http"
 	"github.com/danzbraham/cats-social/internal/commons/validator"
-	user_entity "github.com/danzbraham/cats-social/internal/entities/users"
+	user_entity "github.com/danzbraham/cats-social/internal/entities/user"
 	"github.com/danzbraham/cats-social/internal/services"
 	"github.com/go-chi/chi/v5"
 )

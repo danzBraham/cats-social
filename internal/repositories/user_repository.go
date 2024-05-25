@@ -5,8 +5,7 @@ import (
 	"errors"
 
 	user_exception "github.com/danzbraham/cats-social/internal/commons/exceptions/users"
-	user_entity "github.com/danzbraham/cats-social/internal/entities/users"
-
+	user_entity "github.com/danzbraham/cats-social/internal/entities/user"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )

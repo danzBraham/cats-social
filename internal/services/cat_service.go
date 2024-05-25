@@ -4,7 +4,7 @@ import (
 	"context"
 
 	cat_exception "github.com/danzbraham/cats-social/internal/commons/exceptions/cats"
-	cat_entity "github.com/danzbraham/cats-social/internal/entities/cats"
+	cat_entity "github.com/danzbraham/cats-social/internal/entities/cat"
 	"github.com/danzbraham/cats-social/internal/repositories"
 	"github.com/oklog/ulid/v2"
 )

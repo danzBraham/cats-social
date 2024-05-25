@@ -7,7 +7,7 @@ import (
 	auth_token_manager "github.com/danzbraham/cats-social/internal/commons/auth-token-manager"
 	user_exception "github.com/danzbraham/cats-social/internal/commons/exceptions/users"
 	password_hasher "github.com/danzbraham/cats-social/internal/commons/password-hasher"
-	user_entity "github.com/danzbraham/cats-social/internal/entities/users"
+	user_entity "github.com/danzbraham/cats-social/internal/entities/user"
 
 	"github.com/danzbraham/cats-social/internal/repositories"
 

@@ -8,7 +8,7 @@ import (
 	"time"
 
 	cat_exception "github.com/danzbraham/cats-social/internal/commons/exceptions/cats"
-	cat_entity "github.com/danzbraham/cats-social/internal/entities/cats"
+	cat_entity "github.com/danzbraham/cats-social/internal/entities/cat"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
