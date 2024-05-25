@@ -23,7 +23,7 @@ const (
 )
 
 type Cat struct {
-	ID          string   `json:"id"`
+	Id          string   `json:"id"`
 	Name        string   `json:"name"`
 	Race        Race     `json:"race"`
 	Sex         Sex      `json:"sex"`
@@ -44,12 +44,12 @@ type AddCatRequest struct {
 }
 
 type AddCatResponse struct {
-	ID        string `json:"name"`
+	Id        string `json:"name"`
 	CreatedAt string `json:"createdAt"`
 }
 
 type CatQueryParams struct {
-	ID         string
+	Id         string
 	Limit      string
 	Offset     string
 	Race       string
@@ -61,7 +61,7 @@ type CatQueryParams struct {
 }
 
 type GetCatReponse struct {
-	ID          string   `json:"id"`
+	Id          string   `json:"id"`
 	Name        string   `json:"name"`
 	Race        Race     `json:"race"`
 	Sex         Sex      `json:"sex"`
@@ -70,4 +70,14 @@ type GetCatReponse struct {
 	Description string   `json:"description"`
 	HasMatched  bool     `json:"hasMatched"`
 	CreatedAt   string   `json:"createdAt"`
+}
+
+type UpdateCatRequest struct {
+	Id          string   `json:"id" validate:"required,len=26"`
+	Name        string   `json:"name" validate:"required,min=1,max=30"`
+	Race        Race     `json:"race" validate:"required,oneof='Persian' 'Maine Coon' 'Siamese' 'Ragdoll' 'Bengal' 'Sphynx' 'British Shorthair' 'Abyssinian' 'Scottish Fold' 'Birman'"`
+	Sex         Sex      `json:"sex" validate:"required,oneof='male' 'female'"`
+	AgeInMonth  int      `json:"ageInMonth" validate:"required,min=1,max=120082"`
+	Description string   `json:"description" validate:"required,min=1,max=200"`
+	ImageUrls   []string `json:"imageUrls" validate:"required,min=1,dive,required,imageurl"`
 }

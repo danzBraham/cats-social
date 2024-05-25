@@ -44,7 +44,7 @@ func (s *UserServiceImpl) RegisterUser(ctx context.Context, payload *user_entity
 	}
 
 	user := &user_entity.User{
-		ID:       id,
+		Id:       id,
 		Email:    payload.Email,
 		Name:     payload.Name,
 		Password: hashedPassword,
@@ -77,7 +77,7 @@ func (s *UserServiceImpl) LoginUser(ctx context.Context, payload *user_entity.Lo
 		return nil, user_exception.ErrInvalidPassword
 	}
 
-	accessToken, err := auth_token_manager.GenerateToken(2*time.Hour, user.ID)
+	accessToken, err := auth_token_manager.GenerateToken(2*time.Hour, user.Id)
 	if err != nil {
 		return nil, err
 	}

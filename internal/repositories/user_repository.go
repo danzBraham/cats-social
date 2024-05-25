@@ -40,7 +40,7 @@ func (r *UserRepositoryImpl) VerifyEmail(ctx context.Context, email string) (boo
 
 func (r *UserRepositoryImpl) CreateUser(ctx context.Context, user *user_entity.User) error {
 	query := `INSERT INTO users (id, email, name, password) VALUES ($1, $2, $3, $4)`
-	_, err := r.DB.Exec(ctx, query, &user.ID, &user.Email, &user.Name, &user.Password)
+	_, err := r.DB.Exec(ctx, query, &user.Id, &user.Email, &user.Name, &user.Password)
 	if err != nil {
 		return err
 	}
@@ -50,7 +50,7 @@ func (r *UserRepositoryImpl) CreateUser(ctx context.Context, user *user_entity.U
 func (r *UserRepositoryImpl) GetUserByEmail(ctx context.Context, email string) (*user_entity.User, error) {
 	user := &user_entity.User{}
 	query := `SELECT id, email, name, password FROM users WHERE email = $1`
-	err := r.DB.QueryRow(ctx, query, email).Scan(&user.ID, &user.Email, &user.Name, &user.Password)
+	err := r.DB.QueryRow(ctx, query, email).Scan(&user.Id, &user.Email, &user.Name, &user.Password)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, user_exception.ErrUserNotFound
 	}

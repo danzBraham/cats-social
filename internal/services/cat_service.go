@@ -3,6 +3,7 @@ package services
 import (
 	"context"
 
+	cat_exception "github.com/danzbraham/cats-social/internal/commons/exceptions/cats"
 	cat_entity "github.com/danzbraham/cats-social/internal/entities/cats"
 	"github.com/danzbraham/cats-social/internal/repositories"
 	"github.com/oklog/ulid/v2"
@@ -11,6 +12,7 @@ import (
 type CatService interface {
 	AddCat(ctx context.Context, payload *cat_entity.AddCatRequest) (*cat_entity.AddCatResponse, error)
 	GetCats(ctx context.Context, params *cat_entity.CatQueryParams) ([]*cat_entity.GetCatReponse, error)
+	UpdateCat(ctx context.Context, payload *cat_entity.UpdateCatRequest) error
 }
 
 type CatServiceImpl struct {
@@ -23,7 +25,7 @@ func NewCatService(repository repositories.CatRepository) CatService {
 
 func (s *CatServiceImpl) AddCat(ctx context.Context, payload *cat_entity.AddCatRequest) (*cat_entity.AddCatResponse, error) {
 	cat := &cat_entity.Cat{
-		ID:          ulid.Make().String(),
+		Id:          ulid.Make().String(),
 		Name:        payload.Name,
 		Race:        payload.Race,
 		Sex:         payload.Sex,
@@ -39,11 +41,28 @@ func (s *CatServiceImpl) AddCat(ctx context.Context, payload *cat_entity.AddCatR
 	}
 
 	return &cat_entity.AddCatResponse{
-		ID:        cat.ID,
+		Id:        cat.Id,
 		CreatedAt: createdAt,
 	}, nil
 }
 
 func (s *CatServiceImpl) GetCats(ctx context.Context, params *cat_entity.CatQueryParams) ([]*cat_entity.GetCatReponse, error) {
 	return s.Repository.GetCats(ctx, params)
+}
+
+func (s *CatServiceImpl) UpdateCat(ctx context.Context, payload *cat_entity.UpdateCatRequest) error {
+	isIdExists, err := s.Repository.VerifyId(ctx, payload.Id)
+	if err != nil {
+		return err
+	}
+	if !isIdExists {
+		return cat_exception.ErrCatIdIsNotFound
+	}
+
+	err = s.Repository.UpdateCat(ctx, payload)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }

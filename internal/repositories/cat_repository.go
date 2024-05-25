@@ -2,18 +2,24 @@ package repositories
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strconv"
 	"strings"
 	"time"
 
+	cat_exception "github.com/danzbraham/cats-social/internal/commons/exceptions/cats"
 	cat_entity "github.com/danzbraham/cats-social/internal/entities/cats"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 type CatRepository interface {
+	VerifyId(ctx context.Context, id string) (bool, error)
 	CreateCat(ctx context.Context, cat *cat_entity.Cat) (createdAt string, err error)
 	GetCats(ctx context.Context, params *cat_entity.CatQueryParams) ([]*cat_entity.GetCatReponse, error)
+	GetCatById(ctx context.Context, id string) (*cat_entity.Cat, error)
+	UpdateCat(ctx context.Context, cat *cat_entity.UpdateCatRequest) error
 }
 
 type CatRepositoryImpl struct {
@@ -24,13 +30,26 @@ func NewCatRepository(db *pgxpool.Pool) CatRepository {
 	return &CatRepositoryImpl{DB: db}
 }
 
+func (r *CatRepositoryImpl) VerifyId(ctx context.Context, id string) (bool, error) {
+	var isIdExists int
+	query := `SELECT 1 FROM cats WHERE id = $1`
+	err := r.DB.QueryRow(ctx, query, id).Scan(&isIdExists)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return false, nil
+	}
+	if err != nil {
+		return false, err
+	}
+	return true, nil
+}
+
 func (r *CatRepositoryImpl) CreateCat(ctx context.Context, cat *cat_entity.Cat) (createdAt string, err error) {
 	var timeCreated time.Time
 	query := `INSERT INTO cats (id, name, race, sex, age_in_month, description, image_urls, owner_id)
 							VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
 							RETURNING created_at`
 	err = r.DB.QueryRow(ctx, query,
-		&cat.ID,
+		&cat.Id,
 		&cat.Name,
 		&cat.Race,
 		&cat.Sex,
@@ -48,15 +67,15 @@ func (r *CatRepositoryImpl) CreateCat(ctx context.Context, cat *cat_entity.Cat) 
 
 func (r *CatRepositoryImpl) GetCats(ctx context.Context, params *cat_entity.CatQueryParams) ([]*cat_entity.GetCatReponse, error) {
 	query := `SELECT id, name, race, sex, age_in_month, image_urls, description, has_matched, created_at
-							FROM cats 
-							WHERE is_deleted = false`
+						FROM cats 
+						WHERE is_deleted = false`
 	args := []interface{}{}
-	argID := 1
+	argId := 1
 
-	if params.ID != "" {
-		query += ` AND id = $` + strconv.Itoa(argID)
-		args = append(args, params.ID)
-		argID++
+	if params.Id != "" {
+		query += ` AND id = $` + strconv.Itoa(argId)
+		args = append(args, params.Id)
+		argId++
 	}
 
 	switch params.Race {
@@ -94,9 +113,9 @@ func (r *CatRepositoryImpl) GetCats(ctx context.Context, params *cat_entity.CatQ
 		if err != nil {
 			return nil, err
 		}
-		query += ` AND has_matched = $` + strconv.Itoa(argID)
+		query += ` AND has_matched = $` + strconv.Itoa(argId)
 		args = append(args, hasMatched)
-		argID++
+		argId++
 	}
 
 	if params.AgeInMonth != "" {
@@ -116,9 +135,9 @@ func (r *CatRepositoryImpl) GetCats(ctx context.Context, params *cat_entity.CatQ
 			return nil, err
 		}
 
-		query += ` AND age_in_month ` + ageCondition + ` $` + strconv.Itoa(argID)
+		query += ` AND age_in_month ` + ageCondition + ` $` + strconv.Itoa(argId)
 		args = append(args, age)
-		argID++
+		argId++
 	}
 
 	if params.Owned != "" {
@@ -126,18 +145,18 @@ func (r *CatRepositoryImpl) GetCats(ctx context.Context, params *cat_entity.CatQ
 		if err != nil {
 			return nil, err
 		}
-		query += ` AND owned = $` + strconv.Itoa(argID)
+		query += ` AND owned = $` + strconv.Itoa(argId)
 		args = append(args, owned)
-		argID++
+		argId++
 	}
 
 	if params.Search != "" {
-		query += ` AND name ILIKE $` + strconv.Itoa(argID)
+		query += ` AND name ILIKE $` + strconv.Itoa(argId)
 		args = append(args, "%"+params.Search+"%")
-		argID++
+		argId++
 	}
 
-	query += ` ORDER BY created_at DESC LIMIT $` + strconv.Itoa(argID) + ` OFFSET $` + strconv.Itoa(argID+1)
+	query += ` ORDER BY created_at DESC LIMIT $` + strconv.Itoa(argId) + ` OFFSET $` + strconv.Itoa(argId+1)
 	args = append(args, params.Limit, params.Offset)
 	fmt.Println(query)
 
@@ -152,7 +171,7 @@ func (r *CatRepositoryImpl) GetCats(ctx context.Context, params *cat_entity.CatQ
 		var cat cat_entity.GetCatReponse
 		var timeCreated time.Time
 		err := rows.Scan(
-			&cat.ID,
+			&cat.Id,
 			&cat.Name,
 			&cat.Race,
 			&cat.Sex,
@@ -170,4 +189,38 @@ func (r *CatRepositoryImpl) GetCats(ctx context.Context, params *cat_entity.CatQ
 	}
 
 	return cats, nil
+}
+
+func (r *CatRepositoryImpl) GetCatById(ctx context.Context, id string) (*cat_entity.Cat, error) {
+	var cat cat_entity.Cat
+	query := `SELECT id, name, race, sex, age_in_month, description, image_urls, owner_id
+						FROM cats`
+	err := r.DB.QueryRow(ctx, query).Scan(
+		&cat.Id,
+		&cat.Name,
+		&cat.Race,
+		&cat.Sex,
+		&cat.AgeInMonth,
+		&cat.Description,
+		&cat.ImageUrls,
+		&cat.OwnerId,
+	)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, cat_exception.ErrCatNotFound
+	}
+	if err != nil {
+		return nil, err
+	}
+	return &cat, nil
+}
+
+func (r *CatRepositoryImpl) UpdateCat(ctx context.Context, cat *cat_entity.UpdateCatRequest) error {
+	query := `UPDATE cats 
+						SET name = $1, race = $2, sex = $3, age_in_month = $4, description = $5, image_urls = $6, updated_at = NOW()
+						WHERE id = $7`
+	_, err := r.DB.Exec(ctx, query, &cat.Name, &cat.Race, &cat.Sex, &cat.AgeInMonth, &cat.Description, &cat.ImageUrls, &cat.Id)
+	if err != nil {
+		return err
+	}
+	return nil
 }
