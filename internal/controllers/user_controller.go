@@ -5,24 +5,20 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/danzbraham/cats-social/internal/applications/securities"
-	"github.com/danzbraham/cats-social/internal/applications/usecases"
 	user_exception "github.com/danzbraham/cats-social/internal/commons/exceptions/users"
 	http_common "github.com/danzbraham/cats-social/internal/commons/http"
-	user_entity "github.com/danzbraham/cats-social/internal/domains/entities/users"
+	"github.com/danzbraham/cats-social/internal/commons/validator"
+	user_entity "github.com/danzbraham/cats-social/internal/entities/users"
+	"github.com/danzbraham/cats-social/internal/services"
 	"github.com/go-chi/chi/v5"
 )
 
 type UserController struct {
-	Usecase   usecases.UserUsecase
-	Validator securities.Validator
+	Service services.UserService
 }
 
-func NewUserController(usecase usecases.UserUsecase, validator securities.Validator) *UserController {
-	return &UserController{
-		Usecase:   usecase,
-		Validator: validator,
-	}
+func NewUserController(service services.UserService) *UserController {
+	return &UserController{Service: service}
 }
 
 func (c *UserController) Routes() chi.Router {
@@ -42,12 +38,12 @@ func (c *UserController) handleRegisterUser(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	if err := c.Validator.ValidatePayload(payload); err != nil {
+	if err := validator.ValidatePayload(payload); err != nil {
 		http_common.ResponseError(w, http.StatusBadRequest, err.Error(), "Request doesn't pass validation")
 		return
 	}
 
-	userResponse, err := c.Usecase.RegisterUser(r.Context(), payload)
+	userResponse, err := c.Service.RegisterUser(r.Context(), payload)
 	if errors.Is(err, user_exception.ErrEmailAlreadyExists) {
 		http_common.ResponseError(w, http.StatusConflict, "Conflict error", err.Error())
 		return
@@ -75,12 +71,12 @@ func (c *UserController) handleLoginUser(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	if err := c.Validator.ValidatePayload(payload); err != nil {
+	if err := validator.ValidatePayload(payload); err != nil {
 		http_common.ResponseError(w, http.StatusBadRequest, err.Error(), "Request doesn't pass validation")
 		return
 	}
 
-	userResponse, err := c.Usecase.LoginUser(r.Context(), payload)
+	userResponse, err := c.Service.LoginUser(r.Context(), payload)
 	if errors.Is(err, user_exception.ErrUserNotFound) {
 		http_common.ResponseError(w, http.StatusNotFound, "Not found error", err.Error())
 		return

@@ -4,9 +4,8 @@ import (
 	"log"
 	"os"
 
-	"github.com/danzbraham/cats-social/internal/infrastructures/database"
-	"github.com/danzbraham/cats-social/internal/infrastructures/http"
-
+	"github.com/danzbraham/cats-social/db"
+	"github.com/danzbraham/cats-social/internal/api"
 	"github.com/joho/godotenv"
 )
 
@@ -15,14 +14,14 @@ func main() {
 		log.Fatal("Error loading .env file")
 	}
 
-	pool, err := database.Connect()
+	pool, err := db.Connect()
 	if err != nil {
 		log.Fatalf("Failed to connect to the database: %v", err)
 	}
 	defer pool.Close()
 
 	addr := os.Getenv("APP_HOST") + ":" + os.Getenv("APP_PORT")
-	server := http.NewAPIServer(addr, pool)
+	server := api.NewAPIServer(addr, pool)
 	if err := server.Launch(); err != nil {
 		log.Fatal(err)
 	}

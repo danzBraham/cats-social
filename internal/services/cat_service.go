@@ -1,26 +1,26 @@
-package usecases
+package services
 
 import (
 	"context"
 
-	cat_entity "github.com/danzbraham/cats-social/internal/domains/entities/cats"
-	"github.com/danzbraham/cats-social/internal/domains/repositories"
+	cat_entity "github.com/danzbraham/cats-social/internal/entities/cats"
+	"github.com/danzbraham/cats-social/internal/repositories"
 	"github.com/oklog/ulid/v2"
 )
 
-type CatUsecase interface {
+type CatService interface {
 	AddCat(ctx context.Context, payload *cat_entity.AddCatRequest) (*cat_entity.AddCatResponse, error)
 }
 
-type CatUsecaseImpl struct {
+type CatServiceImpl struct {
 	Repository repositories.CatRepository
 }
 
-func NewCatUsecase(repository repositories.CatRepository) CatUsecase {
-	return &CatUsecaseImpl{Repository: repository}
+func NewCatService(repository repositories.CatRepository) CatService {
+	return &CatServiceImpl{Repository: repository}
 }
 
-func (uc *CatUsecaseImpl) AddCat(ctx context.Context, payload *cat_entity.AddCatRequest) (*cat_entity.AddCatResponse, error) {
+func (uc *CatServiceImpl) AddCat(ctx context.Context, payload *cat_entity.AddCatRequest) (*cat_entity.AddCatResponse, error) {
 	cat := &cat_entity.Cat{
 		ID:          ulid.Make().String(),
 		Name:        payload.Name,

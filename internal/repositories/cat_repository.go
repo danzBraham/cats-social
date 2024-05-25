@@ -1,19 +1,22 @@
-package repositories_impl
+package repositories
 
 import (
 	"context"
 	"time"
 
-	cat_entity "github.com/danzbraham/cats-social/internal/domains/entities/cats"
-	"github.com/danzbraham/cats-social/internal/domains/repositories"
+	cat_entity "github.com/danzbraham/cats-social/internal/entities/cats"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
+
+type CatRepository interface {
+	CreateCat(ctx context.Context, cat *cat_entity.Cat) (createdAt string, err error)
+}
 
 type CatRepositoryImpl struct {
 	DB *pgxpool.Pool
 }
 
-func NewCatRepositoryImpl(db *pgxpool.Pool) repositories.CatRepository {
+func NewCatRepository(db *pgxpool.Pool) CatRepository {
 	return &CatRepositoryImpl{DB: db}
 }
 

@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/danzbraham/cats-social/internal/applications/securities"
+	auth_token_manager "github.com/danzbraham/cats-social/internal/commons/auth-token-manager"
 	http_common "github.com/danzbraham/cats-social/internal/commons/http"
 )
 
@@ -13,15 +13,7 @@ type ContextKey string
 
 var ContextUserIdKey ContextKey = "userId"
 
-type AuthMiddleware struct {
-	AuthTokenManager securities.AuthTokenManager
-}
-
-func NewAuthMiddleware(authTokenManager securities.AuthTokenManager) *AuthMiddleware {
-	return &AuthMiddleware{AuthTokenManager: authTokenManager}
-}
-
-func (m *AuthMiddleware) Middleware(next http.Handler) http.Handler {
+func AuthMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		authHeader := r.Header.Get("Authorization")
 		if authHeader == "" {
@@ -35,7 +27,7 @@ func (m *AuthMiddleware) Middleware(next http.Handler) http.Handler {
 			return
 		}
 
-		credential, err := m.AuthTokenManager.VerifyToken(tokenString)
+		credential, err := auth_token_manager.VerifyToken(tokenString)
 		if err != nil {
 			http_common.ResponseError(w, http.StatusUnauthorized, "Unauthorized error", err.Error())
 			return

@@ -1,18 +1,16 @@
-package http
+package api
 
 import (
 	"log"
 	"net/http"
-	"os"
 
-	"github.com/danzbraham/cats-social/internal/applications/usecases"
 	http_common "github.com/danzbraham/cats-social/internal/commons/http"
-	repositories_impl "github.com/danzbraham/cats-social/internal/infrastructures/repositories"
-	securities_impl "github.com/danzbraham/cats-social/internal/infrastructures/securities"
-	"github.com/danzbraham/cats-social/internal/interfaces/http/controllers"
+	"github.com/danzbraham/cats-social/internal/commons/validator"
+	"github.com/danzbraham/cats-social/internal/controllers"
+	"github.com/danzbraham/cats-social/internal/repositories"
+	"github.com/danzbraham/cats-social/internal/services"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
-	"github.com/go-playground/validator/v10"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -38,20 +36,17 @@ func (s *APIServer) Launch() error {
 		w.Write([]byte("Welcome to Cats Social API"))
 	})
 
-	// Helpers
-	passwordHasher := securities_impl.NewBcryptPasswordHasher()
-	authTokenManager := securities_impl.NewJWTTokenManager([]byte(os.Getenv("JWT_SECRET")))
-	validator := securities_impl.NewGoValidator(validator.New(validator.WithRequiredStructEnabled()))
+	validator.InitCustomValidation()
 
 	// User domain
-	userRepository := repositories_impl.NewUserRepositoryPostgres(s.DB)
-	userUsecase := usecases.NewUserUsecase(userRepository, passwordHasher, authTokenManager)
-	userController := controllers.NewUserController(userUsecase, validator)
+	userRepository := repositories.NewUserRepository(s.DB)
+	userService := services.NewUserService(userRepository)
+	userController := controllers.NewUserController(userService)
 
 	// Cat domain
-	catRepository := repositories_impl.NewCatRepositoryImpl(s.DB)
-	catUsecase := usecases.NewCatUsecase(catRepository)
-	catController := controllers.NewCatController(catUsecase, validator, authTokenManager)
+	catRepository := repositories.NewCatRepository(s.DB)
+	catService := services.NewCatService(catRepository)
+	catController := controllers.NewCatController(catService)
 
 	r.Route("/v1", func(r chi.Router) {
 		r.Mount("/user", userController.Routes())

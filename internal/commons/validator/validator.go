@@ -1,25 +1,24 @@
-package securities_impl
+package validator
 
 import (
 	"net/url"
 	"path"
 
-	"github.com/danzbraham/cats-social/internal/applications/securities"
 	"github.com/go-playground/validator/v10"
 )
 
-type GoValidator struct {
+type CustomValidator struct {
 	Validator *validator.Validate
 }
 
-func NewGoValidator(validator *validator.Validate) securities.Validator {
-	goValidator := &GoValidator{Validator: validator}
-	goValidator.Validator.RegisterValidation("imageurl", validateImageURL)
-	return goValidator
+var validate = validator.New(validator.WithRequiredStructEnabled())
+
+func InitCustomValidation() {
+	validate.RegisterValidation("imageurl", validateImageURL)
 }
 
-func (gv *GoValidator) ValidatePayload(payload interface{}) error {
-	if err := gv.Validator.Struct(payload); err != nil {
+func ValidatePayload(payload interface{}) error {
+	if err := validate.Struct(payload); err != nil {
 		return err.(validator.ValidationErrors)
 	}
 	return nil

@@ -1,29 +1,22 @@
-package securities_impl
+package auth_token_manager
 
 import (
 	"fmt"
+	"os"
 	"time"
 
-	"github.com/danzbraham/cats-social/internal/applications/securities"
 	auth_exception "github.com/danzbraham/cats-social/internal/commons/exceptions/auth"
-	auth_entity "github.com/danzbraham/cats-social/internal/domains/entities/auth"
 	"github.com/golang-jwt/jwt/v5"
 )
 
-type JWTTokenManager struct {
-	Key []byte
-}
-
-func NewJWTTokenManager(key []byte) securities.AuthTokenManager {
-	return &JWTTokenManager{Key: key}
-}
+var key = []byte(os.Getenv("JWT_SECRET"))
 
 type CustomClaims struct {
 	UserId string
 	jwt.RegisteredClaims
 }
 
-func (j *JWTTokenManager) GenerateToken(ttl time.Duration, userId string) (string, error) {
+func GenerateToken(ttl time.Duration, userId string) (string, error) {
 	now := time.Now()
 	expiry := now.Add(ttl)
 
@@ -37,15 +30,19 @@ func (j *JWTTokenManager) GenerateToken(ttl time.Duration, userId string) (strin
 	}
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-	return token.SignedString(j.Key)
+	return token.SignedString(key)
 }
 
-func (j *JWTTokenManager) VerifyToken(tokenString string) (*auth_entity.Credential, error) {
+type Credential struct {
+	UserId string `json:"userId"`
+}
+
+func VerifyToken(tokenString string) (*Credential, error) {
 	token, err := jwt.ParseWithClaims(tokenString, &CustomClaims{}, func(t *jwt.Token) (interface{}, error) {
 		if _, ok := t.Method.(*jwt.SigningMethodHMAC); !ok {
 			return nil, fmt.Errorf("unexpected signing method: %v", t.Method.Alg())
 		}
-		return j.Key, nil
+		return key, nil
 	})
 	if token == nil {
 		return nil, auth_exception.ErrMissingToken
@@ -61,7 +58,7 @@ func (j *JWTTokenManager) VerifyToken(tokenString string) (*auth_entity.Credenti
 		return nil, auth_exception.ErrUnknownClaims
 	}
 
-	return &auth_entity.Credential{
+	return &Credential{
 		UserId: claims.UserId,
 	}, nil
 }

@@ -1,37 +1,33 @@
-package usecases
+package services
 
 import (
 	"context"
 	"time"
 
-	"github.com/danzbraham/cats-social/internal/applications/securities"
+	auth_token_manager "github.com/danzbraham/cats-social/internal/commons/auth-token-manager"
 	user_exception "github.com/danzbraham/cats-social/internal/commons/exceptions/users"
+	password_hasher "github.com/danzbraham/cats-social/internal/commons/password-hasher"
+	user_entity "github.com/danzbraham/cats-social/internal/entities/users"
 
-	user_entity "github.com/danzbraham/cats-social/internal/domains/entities/users"
-	"github.com/danzbraham/cats-social/internal/domains/repositories"
+	"github.com/danzbraham/cats-social/internal/repositories"
+
 	"github.com/oklog/ulid/v2"
 )
 
-type UserUsecase interface {
+type UserService interface {
 	RegisterUser(ctx context.Context, payload *user_entity.RegisterUserRequest) (*user_entity.RegisterUserResponse, error)
 	LoginUser(ctx context.Context, payload *user_entity.LoginUserRequest) (*user_entity.LoginUserResponse, error)
 }
 
-type UserUsecaseImpl struct {
-	Repository       repositories.UserRepository
-	PasswordHasher   securities.PasswordHasher
-	AuthTokenManager securities.AuthTokenManager
+type UserServiceImpl struct {
+	Repository repositories.UserRepository
 }
 
-func NewUserUsecase(repository repositories.UserRepository, passwordHasher securities.PasswordHasher, authTokenManager securities.AuthTokenManager) UserUsecase {
-	return &UserUsecaseImpl{
-		Repository:       repository,
-		PasswordHasher:   passwordHasher,
-		AuthTokenManager: authTokenManager,
-	}
+func NewUserService(repository repositories.UserRepository) UserService {
+	return &UserServiceImpl{Repository: repository}
 }
 
-func (uc *UserUsecaseImpl) RegisterUser(ctx context.Context, payload *user_entity.RegisterUserRequest) (*user_entity.RegisterUserResponse, error) {
+func (uc *UserServiceImpl) RegisterUser(ctx context.Context, payload *user_entity.RegisterUserRequest) (*user_entity.RegisterUserResponse, error) {
 	isEmailExists, err := uc.Repository.VerifyEmail(ctx, payload.Email)
 	if err != nil {
 		return nil, err
@@ -42,7 +38,7 @@ func (uc *UserUsecaseImpl) RegisterUser(ctx context.Context, payload *user_entit
 
 	id := ulid.Make().String()
 
-	hashedPassword, err := uc.PasswordHasher.HashPassword(payload.Password)
+	hashedPassword, err := password_hasher.HashPassword(payload.Password)
 	if err != nil {
 		return nil, err
 	}
@@ -58,7 +54,7 @@ func (uc *UserUsecaseImpl) RegisterUser(ctx context.Context, payload *user_entit
 		return nil, err
 	}
 
-	accessToken, err := uc.AuthTokenManager.GenerateToken(2*time.Hour, id)
+	accessToken, err := auth_token_manager.GenerateToken(2*time.Hour, id)
 	if err != nil {
 		return nil, err
 	}
@@ -70,18 +66,18 @@ func (uc *UserUsecaseImpl) RegisterUser(ctx context.Context, payload *user_entit
 	}, nil
 }
 
-func (uc *UserUsecaseImpl) LoginUser(ctx context.Context, payload *user_entity.LoginUserRequest) (*user_entity.LoginUserResponse, error) {
+func (uc *UserServiceImpl) LoginUser(ctx context.Context, payload *user_entity.LoginUserRequest) (*user_entity.LoginUserResponse, error) {
 	user, err := uc.Repository.GetUserByEmail(ctx, payload.Email)
 	if err != nil {
 		return nil, err
 	}
 
-	err = uc.PasswordHasher.VerifyPassword(user.Password, payload.Password)
+	err = password_hasher.VerifyPassword(user.Password, payload.Password)
 	if err != nil {
 		return nil, user_exception.ErrInvalidPassword
 	}
 
-	accessToken, err := uc.AuthTokenManager.GenerateToken(2*time.Hour, user.ID)
+	accessToken, err := auth_token_manager.GenerateToken(2*time.Hour, user.ID)
 	if err != nil {
 		return nil, err
 	}
