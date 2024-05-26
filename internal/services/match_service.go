@@ -15,6 +15,7 @@ type MatchService interface {
 	GetMatchCatRequests(ctx context.Context) ([]*match_entity.GetMatchCatResponse, error)
 	ApproveMatchCatRequest(ctx context.Context, payload *match_entity.DecisionMatchRequest) error
 	RejectMatchCatRequest(ctx context.Context, payload *match_entity.DecisionMatchRequest) error
+	DeleteMatchCatRequest(ctx context.Context, payload *match_entity.DeleteMatchCatRequest) error
 }
 
 type MatchServiceImpl struct {
@@ -134,6 +135,42 @@ func (s *MatchServiceImpl) RejectMatchCatRequest(ctx context.Context, payload *m
 	}
 
 	err = s.MatchRepository.RejectMatchCatRequest(ctx, payload.MatchId)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (s *MatchServiceImpl) DeleteMatchCatRequest(ctx context.Context, payload *match_entity.DeleteMatchCatRequest) error {
+	isIssuer, err := s.MatchRepository.VerifyIssuer(ctx, payload.Issuer)
+	if err != nil {
+		return err
+	}
+	if !isIssuer {
+		return nil
+	}
+
+	isIdExists, isDeleted, err := s.MatchRepository.VerifyId(ctx, payload.MatchId)
+	if err != nil {
+		return err
+	}
+	if !isIdExists {
+		return match_exception.ErrMatchIdIsNotFound
+	}
+	if isDeleted {
+		return match_exception.ErrMatchIdIsNoLongerValid
+	}
+
+	isPending, err := s.MatchRepository.VerifyStatus(ctx, payload.MatchId)
+	if err != nil {
+		return err
+	}
+	if !isPending {
+		return match_exception.ErrMatchIdIsAlreadyApprovedOrRejected
+	}
+
+	err = s.MatchRepository.DeleteMatchCatRequest(ctx, payload.MatchId)
 	if err != nil {
 		return err
 	}

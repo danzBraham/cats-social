@@ -29,6 +29,7 @@ func (c *MatchController) Routes() chi.Router {
 	r.Get("/", c.handleGetMatchCatRequests)
 	r.Post("/approve", c.handleApproveMatchCatRequest)
 	r.Post("/reject", c.handleRejectMatchCatRequest)
+	r.Delete("/{matchId}", c.handleDeleteMatchCatRequest)
 
 	return r
 }
@@ -152,4 +153,27 @@ func (c *MatchController) handleRejectMatchCatRequest(w http.ResponseWriter, r *
 	}
 
 	http_common.ResponseSuccess(w, http.StatusOK, "successfully reject the cat match request", nil)
+}
+
+func (c *MatchController) handleDeleteMatchCatRequest(w http.ResponseWriter, r *http.Request) {
+	matchId := chi.URLParam(r, "matchId")
+	userId, ok := r.Context().Value(middlewares.ContextUserIdKey).(string)
+	if !ok {
+		http_common.ResponseError(w, http.StatusBadRequest, "User Id type assertion failed", "User Id not found in context")
+		return
+	}
+	payload := &match_entity.DeleteMatchCatRequest{MatchId: matchId, Issuer: userId}
+
+	if err := validator.ValidatePayload(payload); err != nil {
+		http_common.ResponseError(w, http.StatusBadRequest, err.Error(), "Request doesn't pass validation")
+		return
+	}
+
+	err := c.Service.DeleteMatchCatRequest(r.Context(), payload)
+	if err != nil {
+		http_common.ResponseError(w, http.StatusInternalServerError, "Internal server error", err.Error())
+		return
+	}
+
+	http_common.ResponseSuccess(w, http.StatusOK, "successfully remove a cat match request", nil)
 }

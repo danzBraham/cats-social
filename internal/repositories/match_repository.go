@@ -12,12 +12,15 @@ import (
 )
 
 type MatchRepository interface {
-	VerifyId(ctx context.Context, id string) (bool, bool, error)
+	VerifyId(ctx context.Context, matchId string) (bool, bool, error)
+	VerifyStatus(ctx context.Context, matchId string) (bool, error)
+	VerifyIssuer(ctx context.Context, userId string) (bool, error)
 	CreateMatchCatRequest(ctx context.Context, matchCat *match_entity.MatchCat) error
 	GetMatchCatRequests(ctx context.Context) ([]*match_entity.GetMatchCatResponse, error)
-	GetMatchCatRequestById(ctx context.Context, id string) (*match_entity.MatchCat, error)
-	ApproveMatchCatRequest(ctx context.Context, id string) error
-	RejectMatchCatRequest(ctx context.Context, id string) error
+	GetMatchCatRequestById(ctx context.Context, matchId string) (*match_entity.MatchCat, error)
+	ApproveMatchCatRequest(ctx context.Context, matchId string) error
+	RejectMatchCatRequest(ctx context.Context, matchId string) error
+	DeleteMatchCatRequest(ctx context.Context, matchId string) error
 }
 
 type MatchRepositoryImpl struct {
@@ -28,10 +31,10 @@ func NewMatchRepository(db *pgxpool.Pool) MatchRepository {
 	return &MatchRepositoryImpl{DB: db}
 }
 
-func (r *MatchRepositoryImpl) VerifyId(ctx context.Context, id string) (bool, bool, error) {
+func (r *MatchRepositoryImpl) VerifyId(ctx context.Context, matchId string) (bool, bool, error) {
 	var isDeleted bool
 	query := `SELECT is_deleted FROM match_cats WHERE id = $1`
-	err := r.DB.QueryRow(ctx, query, id).Scan(&isDeleted)
+	err := r.DB.QueryRow(ctx, query, matchId).Scan(&isDeleted)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return false, false, nil
 	}
@@ -39,6 +42,32 @@ func (r *MatchRepositoryImpl) VerifyId(ctx context.Context, id string) (bool, bo
 		return false, false, err
 	}
 	return true, isDeleted, nil
+}
+
+func (r *MatchRepositoryImpl) VerifyStatus(ctx context.Context, matchId string) (bool, error) {
+	var isPending int
+	query := `SELECT 1 FROM match_cats WHERE id = $1 AND status = 'pending'`
+	err := r.DB.QueryRow(ctx, query, matchId).Scan(&isPending)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return false, nil
+	}
+	if err != nil {
+		return false, err
+	}
+	return true, nil
+}
+
+func (r *MatchRepositoryImpl) VerifyIssuer(ctx context.Context, userId string) (bool, error) {
+	var isIssuer int
+	query := `SELECT 1 FROM match_cats WHERE issued_by = $1`
+	err := r.DB.QueryRow(ctx, query, userId).Scan(&isIssuer)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return false, nil
+	}
+	if err != nil {
+		return false, err
+	}
+	return true, nil
 }
 
 func (r *MatchRepositoryImpl) CreateMatchCatRequest(ctx context.Context, matchCat *match_entity.MatchCat) error {
@@ -132,7 +161,7 @@ func (r *MatchRepositoryImpl) GetMatchCatRequestById(ctx context.Context, id str
 	return &matchCat, nil
 }
 
-func (r *MatchRepositoryImpl) ApproveMatchCatRequest(ctx context.Context, id string) error {
+func (r *MatchRepositoryImpl) ApproveMatchCatRequest(ctx context.Context, matchId string) error {
 	tx, err := r.DB.Begin(ctx)
 	if err != nil {
 		return err
@@ -143,7 +172,7 @@ func (r *MatchRepositoryImpl) ApproveMatchCatRequest(ctx context.Context, id str
 	approveMatchQuery := `UPDATE match_cats
 												SET status = 'approved', updated_at = NOW()
 												WHERE id = $1 AND status != 'approved'`
-	_, err = tx.Exec(ctx, approveMatchQuery, id)
+	_, err = tx.Exec(ctx, approveMatchQuery, matchId)
 	if err != nil {
 		return err
 	}
@@ -153,7 +182,7 @@ func (r *MatchRepositoryImpl) ApproveMatchCatRequest(ctx context.Context, id str
 	getMatchDetailQuery := `SELECT match_cat_id, user_cat_id
 													FROM match_cats
 													WHERE id = $1`
-	err = tx.QueryRow(ctx, getMatchDetailQuery, id).Scan(&matchCatId, &userCatId)
+	err = tx.QueryRow(ctx, getMatchDetailQuery, matchId).Scan(&matchCatId, &userCatId)
 	if err != nil {
 		return err
 	}
@@ -168,7 +197,7 @@ func (r *MatchRepositoryImpl) ApproveMatchCatRequest(ctx context.Context, id str
 																	OR
 																	(match_cat_id = $3 AND user_cat_id = $2)
 																)`
-	_, err = tx.Exec(ctx, removeOtherMatchesQuery, id, matchCatId, userCatId)
+	_, err = tx.Exec(ctx, removeOtherMatchesQuery, matchId, matchCatId, userCatId)
 	if err != nil {
 		return err
 	}
@@ -190,13 +219,22 @@ func (r *MatchRepositoryImpl) ApproveMatchCatRequest(ctx context.Context, id str
 	return nil
 }
 
-func (r *MatchRepositoryImpl) RejectMatchCatRequest(ctx context.Context, id string) error {
-	query := `
-		UPDATE match_cats
-		SET status = 'rejected', updated_at = NOW()
-		WHERE id = $1 AND status != 'rejected'
-	`
-	_, err := r.DB.Exec(ctx, query)
+func (r *MatchRepositoryImpl) RejectMatchCatRequest(ctx context.Context, matchId string) error {
+	query := `UPDATE match_cats
+						SET status = 'rejected', updated_at = NOW()
+						WHERE id = $1 AND status != 'rejected'`
+	_, err := r.DB.Exec(ctx, query, matchId)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (r *MatchRepositoryImpl) DeleteMatchCatRequest(ctx context.Context, matchId string) error {
+	query := `UPDATE match_cats
+						SET is_deleted = true, updated_at = NOW()
+						WHERE id = $1`
+	_, err := r.DB.Exec(ctx, query, matchId)
 	if err != nil {
 		return err
 	}
