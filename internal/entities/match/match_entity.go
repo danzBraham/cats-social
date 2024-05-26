@@ -35,9 +35,13 @@ type IssuerDetail struct {
 
 type GetMatchCatResponse struct {
 	Id             string                   `json:"id"`
-	IssuedBy       IssuerDetail             `json:"issuedBy"`
 	MatchCatDetail cat_entity.GetCatReponse `json:"matchCatDetail"`
 	UserCatDetail  cat_entity.GetCatReponse `json:"userCatDetail"`
 	Message        string                   `json:"message"`
+	IssuedBy       IssuerDetail             `json:"issuedBy"`
 	CreatedAt      string                   `json:"createdAt"`
+}
+
+type MatchApproveRequest struct {
+	MatchId string `json:"matchId" validate:"required,len=26"`
 }

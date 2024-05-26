@@ -2,15 +2,21 @@ package repositories
 
 import (
 	"context"
+	"errors"
 	"time"
 
+	match_exception "github.com/danzbraham/cats-social/internal/commons/exceptions/match"
 	match_entity "github.com/danzbraham/cats-social/internal/entities/match"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 type MatchRepository interface {
-	CreateMatchCat(ctx context.Context, matchCat *match_entity.MatchCat) error
+	VerifyId(ctx context.Context, id string) (bool, bool, error)
+	CreateMatchCatRequest(ctx context.Context, matchCat *match_entity.MatchCat) error
 	GetMatchCatRequests(ctx context.Context) ([]*match_entity.GetMatchCatResponse, error)
+	GetMatchCatRequestById(ctx context.Context, id string) (*match_entity.MatchCat, error)
+	ApproveMatchCatRequest(ctx context.Context, id string) error
 }
 
 type MatchRepositoryImpl struct {
@@ -21,7 +27,20 @@ func NewMatchRepository(db *pgxpool.Pool) MatchRepository {
 	return &MatchRepositoryImpl{DB: db}
 }
 
-func (r *MatchRepositoryImpl) CreateMatchCat(ctx context.Context, matchCat *match_entity.MatchCat) error {
+func (r *MatchRepositoryImpl) VerifyId(ctx context.Context, id string) (bool, bool, error) {
+	var isDeleted bool
+	query := `SELECT is_deleted FROM match_cats WHERE id = $1`
+	err := r.DB.QueryRow(ctx, query, id).Scan(&isDeleted)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return false, false, nil
+	}
+	if err != nil {
+		return false, false, err
+	}
+	return true, isDeleted, nil
+}
+
+func (r *MatchRepositoryImpl) CreateMatchCatRequest(ctx context.Context, matchCat *match_entity.MatchCat) error {
 	query := `INSERT INTO match_cats (id, match_cat_id, user_cat_id, message, status, issued_by)
 						VALUES ($1, $2, $3, $4, $5, $6)`
 	_, err := r.DB.Exec(ctx, query,
@@ -50,6 +69,7 @@ func (r *MatchRepositoryImpl) GetMatchCatRequests(ctx context.Context) ([]*match
 						JOIN cats mc ON m.match_cat_id = mc.id
 						JOIN cats uc ON m.user_cat_id = uc.id
 						JOIN users u ON m.issued_by = u.id
+						WHERE m.is_deleted = false
 						ORDER BY m.created_at DESC`
 	rows, err := r.DB.Query(ctx, query)
 	if err != nil {
@@ -84,4 +104,87 @@ func (r *MatchRepositoryImpl) GetMatchCatRequests(ctx context.Context) ([]*match
 	}
 
 	return matchCats, nil
+}
+
+func (r *MatchRepositoryImpl) GetMatchCatRequestById(ctx context.Context, id string) (*match_entity.MatchCat, error) {
+	var matchCat match_entity.MatchCat
+	var createdAt time.Time
+	query := `SELECT id, match_cat_id, user_cat_id, message, status, issued_by, created_at
+						FROM match_cats
+						WHERE id = $1 AND is_deleted = false`
+	err := r.DB.QueryRow(ctx, query, id).Scan(
+		&matchCat.Id,
+		&matchCat.MatchCatId,
+		&matchCat.UserCatId,
+		&matchCat.Message,
+		&matchCat.Status,
+		&matchCat.IssuedBy,
+		&createdAt,
+	)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, match_exception.ErrMatchCatIsNotFound
+	}
+	if err != nil {
+		return nil, err
+	}
+	matchCat.CreatedAt = createdAt.Format(time.RFC3339)
+	return &matchCat, nil
+}
+
+func (r *MatchRepositoryImpl) ApproveMatchCatRequest(ctx context.Context, id string) error {
+	tx, err := r.DB.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback(ctx)
+
+	// Approve the match
+	approveMatchQuery := `UPDATE match_cats
+												SET status = 'approved', updated_at = NOW()
+												WHERE id = $1 AND status != 'approved'`
+	_, err = tx.Exec(ctx, approveMatchQuery, id)
+	if err != nil {
+		return err
+	}
+
+	// Get match details
+	var matchCatId, userCatId string
+	getMatchDetailQuery := `SELECT match_cat_id, user_cat_id
+													FROM match_cats
+													WHERE id = $1`
+	err = tx.QueryRow(ctx, getMatchDetailQuery, id).Scan(&matchCatId, &userCatId)
+	if err != nil {
+		return err
+	}
+
+	// Remove other match requests involving the same pair of cats
+	removeOtherMatchesQuery := `UPDATE match_cats
+															SET is_deleted = true, updated_at = NOW()
+															WHERE id != $1
+																AND status != 'approved'
+																AND (
+																	(match_cat_id = $2 AND user_cat_id = $3)
+																	OR
+																	(match_cat_id = $3 AND user_cat_id = $2)
+																)`
+	_, err = tx.Exec(ctx, removeOtherMatchesQuery, id, matchCatId, userCatId)
+	if err != nil {
+		return err
+	}
+
+	// Update has_matched field in the cats table for both cats
+	updateHasMatchedQuery := `UPDATE cats
+														SET has_matched = true
+														WHERE id = $1 OR id = $2`
+	_, err = tx.Exec(ctx, updateHasMatchedQuery, matchCatId, userCatId)
+	if err != nil {
+		return err
+	}
+
+	err = tx.Commit(ctx)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }

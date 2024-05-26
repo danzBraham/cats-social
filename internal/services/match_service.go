@@ -12,6 +12,7 @@ import (
 type MatchService interface {
 	RequestMatchCat(ctx context.Context, payload *match_entity.MatchCatRequest) error
 	GetMatchCatRequests(ctx context.Context) ([]*match_entity.GetMatchCatResponse, error)
+	ApproveMatchCatRequest(ctx context.Context, payload *match_entity.MatchApproveRequest) error
 }
 
 type MatchServiceImpl struct {
@@ -83,7 +84,7 @@ func (s *MatchServiceImpl) RequestMatchCat(ctx context.Context, payload *match_e
 		IssuedBy:   payload.Issuer,
 	}
 
-	err = s.MatchRepository.CreateMatchCat(ctx, createMatchCat)
+	err = s.MatchRepository.CreateMatchCatRequest(ctx, createMatchCat)
 	if err != nil {
 		return err
 	}
@@ -93,4 +94,24 @@ func (s *MatchServiceImpl) RequestMatchCat(ctx context.Context, payload *match_e
 
 func (s *MatchServiceImpl) GetMatchCatRequests(ctx context.Context) ([]*match_entity.GetMatchCatResponse, error) {
 	return s.MatchRepository.GetMatchCatRequests(ctx)
+}
+
+func (s *MatchServiceImpl) ApproveMatchCatRequest(ctx context.Context, payload *match_entity.MatchApproveRequest) error {
+	isIdExists, isDeleted, err := s.MatchRepository.VerifyId(ctx, payload.MatchId)
+	if err != nil {
+		return err
+	}
+	if !isIdExists {
+		return match_exception.ErrMatchIdIsNotFound
+	}
+	if isDeleted {
+		return match_exception.ErrMatchIdIsNoLongerValid
+	}
+
+	err = s.MatchRepository.ApproveMatchCatRequest(ctx, payload.MatchId)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }

@@ -12,8 +12,8 @@ import (
 type CatService interface {
 	AddCat(ctx context.Context, payload *cat_entity.AddCatRequest) (*cat_entity.AddCatResponse, error)
 	GetCats(ctx context.Context, params *cat_entity.CatQueryParams) ([]*cat_entity.GetCatReponse, error)
-	UpdateCat(ctx context.Context, payload *cat_entity.UpdateCatRequest) error
-	DeleteCat(ctx context.Context, payload *cat_entity.DeleteCatRequest) error
+	UpdateCat(ctx context.Context, id string, payload *cat_entity.UpdateCatRequest) error
+	DeleteCat(ctx context.Context, id string) error
 }
 
 type CatServiceImpl struct {
@@ -51,8 +51,8 @@ func (s *CatServiceImpl) GetCats(ctx context.Context, params *cat_entity.CatQuer
 	return s.Repository.GetCats(ctx, params)
 }
 
-func (s *CatServiceImpl) UpdateCat(ctx context.Context, payload *cat_entity.UpdateCatRequest) error {
-	isIdExists, err := s.Repository.VerifyId(ctx, payload.Id)
+func (s *CatServiceImpl) UpdateCat(ctx context.Context, id string, payload *cat_entity.UpdateCatRequest) error {
+	isIdExists, err := s.Repository.VerifyId(ctx, id)
 	if err != nil {
 		return err
 	}
@@ -60,7 +60,7 @@ func (s *CatServiceImpl) UpdateCat(ctx context.Context, payload *cat_entity.Upda
 		return cat_exception.ErrCatIdIsNotFound
 	}
 
-	err = s.Repository.UpdateCat(ctx, payload)
+	err = s.Repository.UpdateCatById(ctx, id, payload)
 	if err != nil {
 		return err
 	}
@@ -68,8 +68,8 @@ func (s *CatServiceImpl) UpdateCat(ctx context.Context, payload *cat_entity.Upda
 	return nil
 }
 
-func (s *CatServiceImpl) DeleteCat(ctx context.Context, payload *cat_entity.DeleteCatRequest) error {
-	isIdExists, err := s.Repository.VerifyId(ctx, payload.Id)
+func (s *CatServiceImpl) DeleteCat(ctx context.Context, id string) error {
+	isIdExists, err := s.Repository.VerifyId(ctx, id)
 	if err != nil {
 		return err
 	}
@@ -77,7 +77,7 @@ func (s *CatServiceImpl) DeleteCat(ctx context.Context, payload *cat_entity.Dele
 		return cat_exception.ErrCatIdIsNotFound
 	}
 
-	err = s.Repository.DeleteCat(ctx, payload.Id)
+	err = s.Repository.DeleteCatById(ctx, id)
 	if err != nil {
 		return err
 	}

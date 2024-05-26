@@ -74,15 +74,10 @@ type GetCatReponse struct {
 }
 
 type UpdateCatRequest struct {
-	Id          string   `json:"id" validate:"required,len=26"`
 	Name        string   `json:"name" validate:"required,min=1,max=30"`
 	Race        Race     `json:"race" validate:"required,oneof='Persian' 'Maine Coon' 'Siamese' 'Ragdoll' 'Bengal' 'Sphynx' 'British Shorthair' 'Abyssinian' 'Scottish Fold' 'Birman'"`
 	Sex         Sex      `json:"sex" validate:"required,oneof='male' 'female'"`
 	AgeInMonth  int      `json:"ageInMonth" validate:"required,min=1,max=120082"`
 	Description string   `json:"description" validate:"required,min=1,max=200"`
 	ImageUrls   []string `json:"imageUrls" validate:"required,min=1,dive,required,imageurl"`
-}
-
-type DeleteCatRequest struct {
-	Id string `json:"id" validate:"required,len=26"`
 }

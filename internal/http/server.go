@@ -55,8 +55,10 @@ func (s *APIServer) Launch() error {
 
 	r.Route("/v1", func(r chi.Router) {
 		r.Mount("/user", userController.Routes())
-		r.Mount("/cat", catController.Routes())
-		r.Mount("/match", matchController.Routes())
+		r.Route("/cat", func(r chi.Router) {
+			r.Mount("/", catController.Routes())
+			r.Mount("/match", matchController.Routes())
+		})
 	})
 
 	r.NotFound(func(w http.ResponseWriter, r *http.Request) {

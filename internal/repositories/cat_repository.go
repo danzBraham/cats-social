@@ -19,8 +19,8 @@ type CatRepository interface {
 	GetCats(ctx context.Context, params *cat_entity.CatQueryParams) ([]*cat_entity.GetCatReponse, error)
 	GetCatById(ctx context.Context, id string) (*cat_entity.Cat, error)
 	GetCatByOwnerId(ctx context.Context, id string) (*cat_entity.Cat, error)
-	UpdateCat(ctx context.Context, cat *cat_entity.UpdateCatRequest) error
-	DeleteCat(ctx context.Context, id string) error
+	UpdateCatById(ctx context.Context, id string, cat *cat_entity.UpdateCatRequest) error
+	DeleteCatById(ctx context.Context, id string) error
 }
 
 type CatRepositoryImpl struct {
@@ -241,18 +241,18 @@ func (r *CatRepositoryImpl) GetCatByOwnerId(ctx context.Context, id string) (*ca
 	return &cat, nil
 }
 
-func (r *CatRepositoryImpl) UpdateCat(ctx context.Context, cat *cat_entity.UpdateCatRequest) error {
+func (r *CatRepositoryImpl) UpdateCatById(ctx context.Context, id string, cat *cat_entity.UpdateCatRequest) error {
 	query := `UPDATE cats 
 						SET name = $1, race = $2, sex = $3, age_in_month = $4, description = $5, image_urls = $6, updated_at = NOW()
 						WHERE id = $7`
-	_, err := r.DB.Exec(ctx, query, &cat.Name, &cat.Race, &cat.Sex, &cat.AgeInMonth, &cat.Description, &cat.ImageUrls, &cat.Id)
+	_, err := r.DB.Exec(ctx, query, &cat.Name, &cat.Race, &cat.Sex, &cat.AgeInMonth, &cat.Description, &cat.ImageUrls, &id)
 	if err != nil {
 		return err
 	}
 	return nil
 }
 
-func (r *CatRepositoryImpl) DeleteCat(ctx context.Context, id string) error {
+func (r *CatRepositoryImpl) DeleteCatById(ctx context.Context, id string) error {
 	query := `UPDATE cats SET is_deleted = true WHERE id = $1`
 	_, err := r.DB.Exec(ctx, query, id)
 	if err != nil {

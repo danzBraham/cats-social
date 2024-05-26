@@ -94,7 +94,7 @@ func (c *CatController) handleGetCats(w http.ResponseWriter, r *http.Request) {
 
 func (c *CatController) handleUpdateCat(w http.ResponseWriter, r *http.Request) {
 	catId := chi.URLParam(r, "catId")
-	payload := &cat_entity.UpdateCatRequest{Id: catId}
+	payload := &cat_entity.UpdateCatRequest{}
 
 	if err := http_common.DecodeJSON(r, payload); err != nil {
 		http_common.ResponseError(w, http.StatusBadRequest, err.Error(), "Failed to decode JSON")
@@ -106,7 +106,7 @@ func (c *CatController) handleUpdateCat(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	err := c.Service.UpdateCat(r.Context(), payload)
+	err := c.Service.UpdateCat(r.Context(), catId, payload)
 	if errors.Is(err, cat_exception.ErrCatIdIsNotFound) {
 		http_common.ResponseError(w, http.StatusNotFound, "Not found error", err.Error())
 		return
@@ -121,14 +121,8 @@ func (c *CatController) handleUpdateCat(w http.ResponseWriter, r *http.Request) 
 
 func (c *CatController) handleDeleteCat(w http.ResponseWriter, r *http.Request) {
 	catId := chi.URLParam(r, "catId")
-	payload := &cat_entity.DeleteCatRequest{Id: catId}
 
-	if err := validator.ValidatePayload(payload); err != nil {
-		http_common.ResponseError(w, http.StatusBadRequest, err.Error(), "Request doesn't pass validation")
-		return
-	}
-
-	err := c.Service.DeleteCat(r.Context(), payload)
+	err := c.Service.DeleteCat(r.Context(), catId)
 	if errors.Is(err, cat_exception.ErrCatIdIsNotFound) {
 		http_common.ResponseError(w, http.StatusNotFound, "Not found error", err.Error())
 		return
