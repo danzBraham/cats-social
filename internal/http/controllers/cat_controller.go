@@ -8,7 +8,7 @@ import (
 	http_common "github.com/danzbraham/cats-social/internal/commons/http"
 	"github.com/danzbraham/cats-social/internal/commons/validator"
 	cat_entity "github.com/danzbraham/cats-social/internal/entities/cat"
-	"github.com/danzbraham/cats-social/internal/middlewares"
+	"github.com/danzbraham/cats-social/internal/http/middlewares"
 	"github.com/danzbraham/cats-social/internal/services"
 	"github.com/go-chi/chi/v5"
 )

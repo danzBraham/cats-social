@@ -1,4 +1,4 @@
-package api
+package http
 
 import (
 	"log"
@@ -6,7 +6,7 @@ import (
 
 	http_common "github.com/danzbraham/cats-social/internal/commons/http"
 	"github.com/danzbraham/cats-social/internal/commons/validator"
-	"github.com/danzbraham/cats-social/internal/controllers"
+	"github.com/danzbraham/cats-social/internal/http/controllers"
 	"github.com/danzbraham/cats-social/internal/repositories"
 	"github.com/danzbraham/cats-social/internal/services"
 	"github.com/go-chi/chi/v5"

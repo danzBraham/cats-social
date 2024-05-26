@@ -5,7 +5,7 @@ import (
 	"os"
 
 	"github.com/danzbraham/cats-social/db"
-	"github.com/danzbraham/cats-social/internal/api"
+	"github.com/danzbraham/cats-social/internal/http"
 	"github.com/joho/godotenv"
 )
 
@@ -21,7 +21,7 @@ func main() {
 	defer pool.Close()
 
 	addr := os.Getenv("APP_HOST") + ":" + os.Getenv("APP_PORT")
-	server := api.NewAPIServer(addr, pool)
+	server := http.NewAPIServer(addr, pool)
 	if err := server.Launch(); err != nil {
 		log.Fatal(err)
 	}
