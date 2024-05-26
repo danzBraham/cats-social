@@ -94,7 +94,7 @@ func (c *MatchController) handleGetMatchCatRequests(w http.ResponseWriter, r *ht
 }
 
 func (c *MatchController) handleApproveMatchCatRequest(w http.ResponseWriter, r *http.Request) {
-	payload := &match_entity.MatchApproveRequest{}
+	payload := &match_entity.ApproveMatchRequest{}
 
 	if err := http_common.DecodeJSON(r, payload); err != nil {
 		http_common.ResponseError(w, http.StatusBadRequest, err.Error(), "Failed to decode JSON")

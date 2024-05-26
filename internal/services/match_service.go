@@ -12,7 +12,7 @@ import (
 type MatchService interface {
 	RequestMatchCat(ctx context.Context, payload *match_entity.MatchCatRequest) error
 	GetMatchCatRequests(ctx context.Context) ([]*match_entity.GetMatchCatResponse, error)
-	ApproveMatchCatRequest(ctx context.Context, payload *match_entity.MatchApproveRequest) error
+	ApproveMatchCatRequest(ctx context.Context, payload *match_entity.ApproveMatchRequest) error
 }
 
 type MatchServiceImpl struct {
@@ -96,7 +96,7 @@ func (s *MatchServiceImpl) GetMatchCatRequests(ctx context.Context) ([]*match_en
 	return s.MatchRepository.GetMatchCatRequests(ctx)
 }
 
-func (s *MatchServiceImpl) ApproveMatchCatRequest(ctx context.Context, payload *match_entity.MatchApproveRequest) error {
+func (s *MatchServiceImpl) ApproveMatchCatRequest(ctx context.Context, payload *match_entity.ApproveMatchRequest) error {
 	isIdExists, isDeleted, err := s.MatchRepository.VerifyId(ctx, payload.MatchId)
 	if err != nil {
 		return err
