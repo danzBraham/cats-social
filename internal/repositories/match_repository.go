@@ -17,6 +17,7 @@ type MatchRepository interface {
 	GetMatchCatRequests(ctx context.Context) ([]*match_entity.GetMatchCatResponse, error)
 	GetMatchCatRequestById(ctx context.Context, id string) (*match_entity.MatchCat, error)
 	ApproveMatchCatRequest(ctx context.Context, id string) error
+	RejectMatchCatRequest(ctx context.Context, id string) error
 }
 
 type MatchRepositoryImpl struct {
@@ -186,5 +187,18 @@ func (r *MatchRepositoryImpl) ApproveMatchCatRequest(ctx context.Context, id str
 		return err
 	}
 
+	return nil
+}
+
+func (r *MatchRepositoryImpl) RejectMatchCatRequest(ctx context.Context, id string) error {
+	query := `
+		UPDATE match_cats
+		SET status = 'rejected', updated_at = NOW()
+		WHERE id = $1 AND status != 'rejected'
+	`
+	_, err := r.DB.Exec(ctx, query)
+	if err != nil {
+		return err
+	}
 	return nil
 }

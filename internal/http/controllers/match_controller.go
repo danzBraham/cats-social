@@ -28,6 +28,7 @@ func (c *MatchController) Routes() chi.Router {
 	r.Post("/", c.handleMatchCatRequest)
 	r.Get("/", c.handleGetMatchCatRequests)
 	r.Post("/approve", c.handleApproveMatchCatRequest)
+	r.Post("/reject", c.handleRejectMatchCatRequest)
 
 	return r
 }
@@ -94,7 +95,7 @@ func (c *MatchController) handleGetMatchCatRequests(w http.ResponseWriter, r *ht
 }
 
 func (c *MatchController) handleApproveMatchCatRequest(w http.ResponseWriter, r *http.Request) {
-	payload := &match_entity.ApproveMatchRequest{}
+	payload := &match_entity.DecisionMatchRequest{}
 
 	if err := http_common.DecodeJSON(r, payload); err != nil {
 		http_common.ResponseError(w, http.StatusBadRequest, err.Error(), "Failed to decode JSON")
@@ -121,4 +122,34 @@ func (c *MatchController) handleApproveMatchCatRequest(w http.ResponseWriter, r 
 	}
 
 	http_common.ResponseSuccess(w, http.StatusOK, "successfully matches the cat match request", nil)
+}
+
+func (c *MatchController) handleRejectMatchCatRequest(w http.ResponseWriter, r *http.Request) {
+	payload := &match_entity.DecisionMatchRequest{}
+
+	if err := http_common.DecodeJSON(r, payload); err != nil {
+		http_common.ResponseError(w, http.StatusBadRequest, err.Error(), "Failed to decode JSON")
+		return
+	}
+
+	if err := validator.ValidatePayload(payload); err != nil {
+		http_common.ResponseError(w, http.StatusBadRequest, err.Error(), "Request doesn't pass validation")
+		return
+	}
+
+	err := c.Service.RejectMatchCatRequest(r.Context(), payload)
+	if errors.Is(err, match_exception.ErrMatchIdIsNotFound) {
+		http_common.ResponseError(w, http.StatusNotFound, "Not found error", err.Error())
+		return
+	}
+	if errors.Is(err, match_exception.ErrMatchIdIsNoLongerValid) {
+		http_common.ResponseError(w, http.StatusBadRequest, "Bad request error", err.Error())
+		return
+	}
+	if err != nil {
+		http_common.ResponseError(w, http.StatusInternalServerError, "Internal server error", err.Error())
+		return
+	}
+
+	http_common.ResponseSuccess(w, http.StatusOK, "successfully reject the cat match request", nil)
 }

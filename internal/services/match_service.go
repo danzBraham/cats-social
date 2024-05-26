@@ -2,6 +2,7 @@ package services
 
 import (
 	"context"
+	"log"
 
 	match_exception "github.com/danzbraham/cats-social/internal/commons/exceptions/match"
 	match_entity "github.com/danzbraham/cats-social/internal/entities/match"
@@ -12,7 +13,8 @@ import (
 type MatchService interface {
 	RequestMatchCat(ctx context.Context, payload *match_entity.MatchCatRequest) error
 	GetMatchCatRequests(ctx context.Context) ([]*match_entity.GetMatchCatResponse, error)
-	ApproveMatchCatRequest(ctx context.Context, payload *match_entity.ApproveMatchRequest) error
+	ApproveMatchCatRequest(ctx context.Context, payload *match_entity.DecisionMatchRequest) error
+	RejectMatchCatRequest(ctx context.Context, payload *match_entity.DecisionMatchRequest) error
 }
 
 type MatchServiceImpl struct {
@@ -48,6 +50,9 @@ func (s *MatchServiceImpl) RequestMatchCat(ctx context.Context, payload *match_e
 	if err != nil {
 		return err
 	}
+
+	log.Println(payload.UserCatId)
+	log.Println(issuerCat.Name)
 
 	if payload.UserCatId != issuerCat.Id {
 		return match_exception.ErrUserCatIdNotBelongTheUser
@@ -96,7 +101,7 @@ func (s *MatchServiceImpl) GetMatchCatRequests(ctx context.Context) ([]*match_en
 	return s.MatchRepository.GetMatchCatRequests(ctx)
 }
 
-func (s *MatchServiceImpl) ApproveMatchCatRequest(ctx context.Context, payload *match_entity.ApproveMatchRequest) error {
+func (s *MatchServiceImpl) ApproveMatchCatRequest(ctx context.Context, payload *match_entity.DecisionMatchRequest) error {
 	isIdExists, isDeleted, err := s.MatchRepository.VerifyId(ctx, payload.MatchId)
 	if err != nil {
 		return err
@@ -109,6 +114,26 @@ func (s *MatchServiceImpl) ApproveMatchCatRequest(ctx context.Context, payload *
 	}
 
 	err = s.MatchRepository.ApproveMatchCatRequest(ctx, payload.MatchId)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (s *MatchServiceImpl) RejectMatchCatRequest(ctx context.Context, payload *match_entity.DecisionMatchRequest) error {
+	isIdExists, isDeleted, err := s.MatchRepository.VerifyId(ctx, payload.MatchId)
+	if err != nil {
+		return err
+	}
+	if !isIdExists {
+		return match_exception.ErrMatchIdIsNotFound
+	}
+	if isDeleted {
+		return match_exception.ErrMatchIdIsNoLongerValid
+	}
+
+	err = s.MatchRepository.RejectMatchCatRequest(ctx, payload.MatchId)
 	if err != nil {
 		return err
 	}
