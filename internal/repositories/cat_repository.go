@@ -16,7 +16,7 @@ import (
 type CatRepository interface {
 	VerifyId(ctx context.Context, id string) (bool, error)
 	CreateCat(ctx context.Context, cat *cat_entity.Cat) (createdAt string, err error)
-	GetCats(ctx context.Context, params *cat_entity.CatQueryParams) ([]*cat_entity.GetCatReponse, error)
+	GetCats(ctx context.Context, userId string, params *cat_entity.CatQueryParams) ([]*cat_entity.GetCatReponse, error)
 	GetCatById(ctx context.Context, id string) (*cat_entity.Cat, error)
 	GetCatByOwnerId(ctx context.Context, id string) (*cat_entity.Cat, error)
 	UpdateCatById(ctx context.Context, id string, cat *cat_entity.UpdateCatRequest) error
@@ -66,7 +66,7 @@ func (r *CatRepositoryImpl) CreateCat(ctx context.Context, cat *cat_entity.Cat) 
 	return createdAt, nil
 }
 
-func (r *CatRepositoryImpl) GetCats(ctx context.Context, params *cat_entity.CatQueryParams) ([]*cat_entity.GetCatReponse, error) {
+func (r *CatRepositoryImpl) GetCats(ctx context.Context, userId string, params *cat_entity.CatQueryParams) ([]*cat_entity.GetCatReponse, error) {
 	query := `SELECT id, name, race, sex, age_in_month, image_urls, description, has_matched, created_at
 						FROM cats 
 						WHERE is_deleted = false`
@@ -142,12 +142,8 @@ func (r *CatRepositoryImpl) GetCats(ctx context.Context, params *cat_entity.CatQ
 	}
 
 	if params.Owned != "" {
-		owned, err := strconv.ParseBool(params.Owned)
-		if err != nil {
-			return nil, err
-		}
-		query += ` AND owned = $` + strconv.Itoa(argId)
-		args = append(args, owned)
+		query += ` AND owner_id = $` + strconv.Itoa(argId)
+		args = append(args, userId)
 		argId++
 	}
 

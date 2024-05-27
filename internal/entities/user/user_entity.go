@@ -8,14 +8,14 @@ type User struct {
 }
 
 type RegisterUserRequest struct {
-	Email    string `json:"email" validate:"required,email"`
 	Name     string `json:"name" validate:"required,min=5,max=50"`
+	Email    string `json:"email" validate:"required,email"`
 	Password string `json:"password" validate:"required,min=5,max=15"`
 }
 
 type RegisterUserResponse struct {
-	Email       string `json:"email"`
 	Name        string `json:"name"`
+	Email       string `json:"email"`
 	AccessToken string `json:"accessToken"`
 }
 
@@ -25,7 +25,7 @@ type LoginUserRequest struct {
 }
 
 type LoginUserResponse struct {
-	Email       string `json:"email"`
 	Name        string `json:"name"`
+	Email       string `json:"email"`
 	AccessToken string `json:"accessToken"`
 }

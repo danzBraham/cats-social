@@ -11,7 +11,7 @@ import (
 
 type CatService interface {
 	AddCat(ctx context.Context, payload *cat_entity.AddCatRequest) (*cat_entity.AddCatResponse, error)
-	GetCats(ctx context.Context, params *cat_entity.CatQueryParams) ([]*cat_entity.GetCatReponse, error)
+	GetCats(ctx context.Context, userId string, params *cat_entity.CatQueryParams) ([]*cat_entity.GetCatReponse, error)
 	UpdateCat(ctx context.Context, id string, payload *cat_entity.UpdateCatRequest) error
 	DeleteCat(ctx context.Context, id string) error
 }
@@ -47,8 +47,8 @@ func (s *CatServiceImpl) AddCat(ctx context.Context, payload *cat_entity.AddCatR
 	}, nil
 }
 
-func (s *CatServiceImpl) GetCats(ctx context.Context, params *cat_entity.CatQueryParams) ([]*cat_entity.GetCatReponse, error) {
-	return s.Repository.GetCats(ctx, params)
+func (s *CatServiceImpl) GetCats(ctx context.Context, userId string, params *cat_entity.CatQueryParams) ([]*cat_entity.GetCatReponse, error) {
+	return s.Repository.GetCats(ctx, userId, params)
 }
 
 func (s *CatServiceImpl) UpdateCat(ctx context.Context, id string, payload *cat_entity.UpdateCatRequest) error {

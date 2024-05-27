@@ -7,6 +7,7 @@ import (
 	http_common "github.com/danzbraham/cats-social/internal/commons/http"
 	"github.com/danzbraham/cats-social/internal/commons/validator"
 	"github.com/danzbraham/cats-social/internal/http/controllers"
+	"github.com/danzbraham/cats-social/internal/http/middlewares"
 	"github.com/danzbraham/cats-social/internal/repositories"
 	"github.com/danzbraham/cats-social/internal/services"
 	"github.com/go-chi/chi/v5"
@@ -56,6 +57,7 @@ func (s *APIServer) Launch() error {
 	r.Route("/v1", func(r chi.Router) {
 		r.Mount("/user", userController.Routes())
 		r.Route("/cat", func(r chi.Router) {
+			r.Use(middlewares.AuthMiddleware)
 			r.Mount("/", catController.Routes())
 			r.Mount("/match", matchController.Routes())
 		})

@@ -45,7 +45,7 @@ type AddCatRequest struct {
 }
 
 type AddCatResponse struct {
-	Id        string `json:"name"`
+	Id        string `json:"id"`
 	CreatedAt string `json:"createdAt"`
 }
 

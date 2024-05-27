@@ -32,7 +32,6 @@ CREATE TABLE IF NOT EXISTS cats (
   description VARCHAR(200) NOT NULL,
   image_urls TEXT[] NOT NULL CHECK (array_length(image_urls, 1) >= 1),
   has_matched BOOLEAN NOT NULL DEFAULT false,
-  owned BOOLEAN NOT NULL DEFAULT false,
   owner_id VARCHAR(26) NOT NULL,
   is_deleted BOOLEAN NOT NULL DEFAULT false,
   created_at TIMESTAMP DEFAULT NOW(),

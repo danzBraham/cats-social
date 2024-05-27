@@ -97,5 +97,5 @@ func (c *UserController) handleLoginUser(w http.ResponseWriter, r *http.Request)
 	}
 	http.SetCookie(w, cookie)
 
-	http_common.ResponseSuccess(w, http.StatusCreated, "User successfully logged", userResponse)
+	http_common.ResponseSuccess(w, http.StatusOK, "User successfully logged", userResponse)
 }

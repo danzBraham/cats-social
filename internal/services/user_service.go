@@ -36,15 +36,13 @@ func (s *UserServiceImpl) RegisterUser(ctx context.Context, payload *user_entity
 		return nil, user_exception.ErrEmailAlreadyExists
 	}
 
-	id := ulid.Make().String()
-
 	hashedPassword, err := password_hasher.HashPassword(payload.Password)
 	if err != nil {
 		return nil, err
 	}
 
 	user := &user_entity.User{
-		Id:       id,
+		Id:       ulid.Make().String(),
 		Email:    payload.Email,
 		Name:     payload.Name,
 		Password: hashedPassword,
@@ -54,14 +52,14 @@ func (s *UserServiceImpl) RegisterUser(ctx context.Context, payload *user_entity
 		return nil, err
 	}
 
-	accessToken, err := auth_token_manager.GenerateToken(2*time.Hour, id)
+	accessToken, err := auth_token_manager.GenerateToken(2*time.Hour, user.Id)
 	if err != nil {
 		return nil, err
 	}
 
 	return &user_entity.RegisterUserResponse{
+		Name:        user.Name,
 		Email:       user.Email,
-		Name:        user.Email,
 		AccessToken: accessToken,
 	}, nil
 }
@@ -83,8 +81,8 @@ func (s *UserServiceImpl) LoginUser(ctx context.Context, payload *user_entity.Lo
 	}
 
 	return &user_entity.LoginUserResponse{
-		Email:       user.Email,
 		Name:        user.Name,
+		Email:       user.Email,
 		AccessToken: accessToken,
 	}, nil
 }

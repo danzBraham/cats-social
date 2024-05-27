@@ -24,7 +24,6 @@ func NewCatController(service services.CatService) *CatController {
 func (c *CatController) Routes() chi.Router {
 	r := chi.NewRouter()
 
-	r.Use(middlewares.AuthMiddleware)
 	r.Post("/", c.handleAddCat)
 	r.Get("/", c.handleGetCats)
 	r.Put("/{catId}", c.handleUpdateCat)
@@ -61,6 +60,11 @@ func (c *CatController) handleAddCat(w http.ResponseWriter, r *http.Request) {
 }
 
 func (c *CatController) handleGetCats(w http.ResponseWriter, r *http.Request) {
+	userId, ok := r.Context().Value(middlewares.ContextUserIdKey).(string)
+	if !ok {
+		http_common.ResponseError(w, http.StatusBadRequest, "User Id type assertion failed", "User Id not found in context")
+		return
+	}
 	query := r.URL.Query()
 
 	params := &cat_entity.CatQueryParams{
@@ -83,7 +87,7 @@ func (c *CatController) handleGetCats(w http.ResponseWriter, r *http.Request) {
 		params.Offset = offset
 	}
 
-	catsResponse, err := c.Service.GetCats(r.Context(), params)
+	catsResponse, err := c.Service.GetCats(r.Context(), userId, params)
 	if err != nil {
 		http_common.ResponseError(w, http.StatusInternalServerError, "Internal server error", err.Error())
 		return

@@ -24,7 +24,6 @@ func NewMatchController(service services.MatchService) *MatchController {
 func (c *MatchController) Routes() chi.Router {
 	r := chi.NewRouter()
 
-	r.Use(middlewares.AuthMiddleware)
 	r.Post("/", c.handleMatchCatRequest)
 	r.Get("/", c.handleGetMatchCatRequests)
 	r.Post("/approve", c.handleApproveMatchCatRequest)
