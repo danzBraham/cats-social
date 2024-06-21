@@ -1,3 +1,3 @@
-module github.com/danzbraham/cats-social
+module github.com/danzBraham/cats-social
 
-go 1.22.3
+go 1.22.4
