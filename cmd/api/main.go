@@ -2,20 +2,27 @@ package main
 
 import (
 	"log"
+	"os"
 
-	"github.com/danzBraham/cats-social/internal/server"
+	"github.com/danzBraham/cats-social/internal/database"
+	"github.com/danzBraham/cats-social/internal/http"
 	"github.com/joho/godotenv"
 )
 
 func main() {
 	if err := godotenv.Load(); err != nil {
-		log.Fatal("Error loading .env file")
+		log.Fatal("error loading .env file")
 	}
 
-	server := server.NewServer()
+	addr := os.Getenv("APP_HOST") + ":" + os.Getenv("APP_PORT")
+	pool, err := database.Connect()
+	if err != nil {
+		log.Fatalf("failed to connect to the database: %v", err)
+	}
+	defer pool.Close()
 
-	log.Printf("Server listening on %s\n", server.Addr)
-	if err := server.ListenAndServe(); err != nil {
+	server := http.NewServer(addr, pool)
+	if err := server.Launch(); err != nil {
 		log.Fatal(err)
 	}
 }

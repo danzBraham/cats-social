@@ -1,9 +1,12 @@
-package server
+package http
 
 import (
 	"net/http"
 
 	http_helper "github.com/danzBraham/cats-social/internal/helpers/http"
+	"github.com/danzBraham/cats-social/internal/http/controllers"
+	"github.com/danzBraham/cats-social/internal/repositories"
+	"github.com/danzBraham/cats-social/internal/services"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 )
@@ -16,7 +19,18 @@ func (s *Server) RegisterRoutes() http.Handler {
 
 	r.Get("/", func(w http.ResponseWriter, r *http.Request) {
 		http_helper.EncodeJSON(w, http.StatusOK, http_helper.ResponseBody{
-			Message: "welcome to Cats Social API",
+			Message: "Welcome to Cats Social API",
+		})
+	})
+
+	// user domain
+	userRepository := repositories.NewUserRepository(s.DB)
+	userService := services.NewUserService(userRepository)
+	userController := controllers.NewUserController(userService)
+
+	r.Route("/v1", func(r chi.Router) {
+		r.Route("/user", func(r chi.Router) {
+			r.Post("/register", userController.HandlerRegisterUser)
 		})
 	})
 
