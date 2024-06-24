@@ -14,6 +14,7 @@ import (
 
 type UserService interface {
 	RegisterUser(ctx context.Context, payload *user_entity.RegisterUserRequest) (*user_entity.RegisterUserResponse, error)
+	LoginUser(ctx context.Context, payload *user_entity.LoginUserRequest) (*user_entity.LoginUserResponse, error)
 }
 
 type UserServiceImpl struct {
@@ -50,12 +51,35 @@ func (s *UserServiceImpl) RegisterUser(ctx context.Context, payload *user_entity
 		return nil, err
 	}
 
-	token, err := jwt.GenerateToken(2*time.Hour, user.Id)
+	token, err := jwt.GenerateToken(8*time.Hour, user.Id)
 	if err != nil {
 		return nil, err
 	}
 
 	return &user_entity.RegisterUserResponse{
+		Name:        user.Name,
+		Email:       user.Email,
+		AccessToken: token,
+	}, nil
+}
+
+func (s *UserServiceImpl) LoginUser(ctx context.Context, payload *user_entity.LoginUserRequest) (*user_entity.LoginUserResponse, error) {
+	user, err := s.UserRepository.GetUserByEmail(ctx, payload.Email)
+	if err != nil {
+		return nil, err
+	}
+
+	err = bcrypt.VerifyPassword(user.Password, payload.Password)
+	if err != nil {
+		return nil, user_error.ErrInvalidPassword
+	}
+
+	token, err := jwt.GenerateToken(8*time.Hour, user.Id)
+	if err != nil {
+		return nil, err
+	}
+
+	return &user_entity.LoginUserResponse{
 		Name:        user.Name,
 		Email:       user.Email,
 		AccessToken: token,

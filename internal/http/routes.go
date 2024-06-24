@@ -30,7 +30,8 @@ func (s *Server) RegisterRoutes() http.Handler {
 
 	r.Route("/v1", func(r chi.Router) {
 		r.Route("/user", func(r chi.Router) {
-			r.Post("/register", userController.HandlerRegisterUser)
+			r.Post("/register", userController.HandleRegisterUser)
+			r.Post("/login", userController.HandleLoginUser)
 		})
 	})
 
