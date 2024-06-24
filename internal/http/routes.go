@@ -43,6 +43,7 @@ func (s *Server) RegisterRoutes() http.Handler {
 		r.Route("/cat", func(r chi.Router) {
 			r.Use(middlewares.Auth)
 			r.Post("/", catController.HandleCreateCat)
+			r.Get("/", catController.HandleGetCats)
 		})
 	})
 

@@ -30,6 +30,7 @@ type Cat struct {
 	AgeInMonth  int
 	Description string
 	ImageUrls   []string
+	HasMatched  bool
 	OwnerId     string
 	CreatedAt   string
 	UpdatedAt   string
@@ -47,4 +48,28 @@ type CreateCatRequest struct {
 type CreateCatResponse struct {
 	Id        string `json:"id"`
 	CreatedAt string `json:"createdAt"`
+}
+
+type CatQueryParams struct {
+	Id         string
+	Limit      int
+	Offset     int
+	Race       Race
+	Sex        Sex
+	HasMatched bool
+	AgeInMonth string
+	Owned      bool
+	Search     string
+}
+
+type GetCatResponse struct {
+	Id          string   `json:"id"`
+	Name        string   `json:"name"`
+	Race        Race     `json:"race"`
+	Sex         Sex      `json:"sex"`
+	AgeInMonth  int      `json:"ageInMonth"`
+	Description string   `json:"description"`
+	ImageUrls   []string `json:"imageUrls"`
+	HasMatched  bool     `json:"hasMatched"`
+	CreatedAt   string   `json:"createdAt"`
 }
