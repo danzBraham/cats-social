@@ -5,6 +5,7 @@ import (
 
 	"github.com/danzBraham/cats-social/internal/helpers/http_helper"
 	"github.com/danzBraham/cats-social/internal/http/controllers"
+	"github.com/danzBraham/cats-social/internal/http/middlewares"
 	"github.com/danzBraham/cats-social/internal/repositories"
 	"github.com/danzBraham/cats-social/internal/services"
 	"github.com/go-chi/chi/v5"
@@ -32,6 +33,10 @@ func (s *Server) RegisterRoutes() http.Handler {
 		r.Route("/user", func(r chi.Router) {
 			r.Post("/register", userController.HandleRegisterUser)
 			r.Post("/login", userController.HandleLoginUser)
+		})
+
+		r.Route("/cat", func(r chi.Router) {
+			r.Use(middlewares.Auth)
 		})
 	})
 
