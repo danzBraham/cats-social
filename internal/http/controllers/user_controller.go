@@ -5,10 +5,9 @@ import (
 	"net/http"
 	"time"
 
-	user_entity "github.com/danzBraham/cats-social/internal/entities/user"
-	user_error "github.com/danzBraham/cats-social/internal/errors/user"
-	http_helper "github.com/danzBraham/cats-social/internal/helpers/http"
-	"github.com/danzBraham/cats-social/internal/helpers/validator"
+	"github.com/danzBraham/cats-social/internal/entities/user_entity"
+	"github.com/danzBraham/cats-social/internal/errors/user_error"
+	"github.com/danzBraham/cats-social/internal/helpers/http_helper"
 	"github.com/danzBraham/cats-social/internal/services"
 )
 
@@ -27,38 +26,18 @@ func NewUserController(userService services.UserService) UserController {
 
 func (c *UserControllerImpl) HandleRegisterUser(w http.ResponseWriter, r *http.Request) {
 	payload := &user_entity.RegisterUserRequest{}
-
-	err := http_helper.DecodeJSON(r, payload)
+	err := http_helper.DecodeAndValidate(w, r, payload)
 	if err != nil {
-		http_helper.EncodeJSON(w, http.StatusBadRequest, http_helper.ResponseBody{
-			Error:   "bad request",
-			Message: err.Error(),
-		})
-		return
-	}
-
-	err = validator.ValidatePayload(payload)
-	if err != nil {
-		http_helper.EncodeJSON(w, http.StatusBadRequest, http_helper.ResponseBody{
-			Error:   "request doesn't pass validation",
-			Message: err.Error(),
-		})
 		return
 	}
 
 	userResponse, err := c.UserService.RegisterUser(r.Context(), payload)
 	if errors.Is(err, user_error.ErrEmailAlreadyExists) {
-		http_helper.EncodeJSON(w, http.StatusConflict, http_helper.ResponseBody{
-			Error:   "conflict",
-			Message: err.Error(),
-		})
+		http_helper.HandleErrorResponse(w, http.StatusConflict, err)
 		return
 	}
 	if err != nil {
-		http_helper.EncodeJSON(w, http.StatusInternalServerError, http_helper.ResponseBody{
-			Error:   "internal server",
-			Message: err.Error(),
-		})
+		http_helper.HandleErrorResponse(w, http.StatusInternalServerError, err)
 		return
 	}
 
@@ -69,53 +48,27 @@ func (c *UserControllerImpl) HandleRegisterUser(w http.ResponseWriter, r *http.R
 	}
 	http.SetCookie(w, cookie)
 
-	http_helper.EncodeJSON(w, http.StatusCreated, http_helper.ResponseBody{
-		Message: "User registered successfully",
-		Data:    userResponse,
-	})
+	http_helper.HandleSuccessResponse(w, http.StatusCreated, "User registered successfully", userResponse)
 }
 
 func (c *UserControllerImpl) HandleLoginUser(w http.ResponseWriter, r *http.Request) {
 	payload := &user_entity.LoginUserRequest{}
-
-	err := http_helper.DecodeJSON(r, payload)
+	err := http_helper.DecodeAndValidate(w, r, payload)
 	if err != nil {
-		http_helper.EncodeJSON(w, http.StatusBadRequest, http_helper.ResponseBody{
-			Error:   "bad request",
-			Message: err.Error(),
-		})
-		return
-	}
-
-	err = validator.ValidatePayload(payload)
-	if err != nil {
-		http_helper.EncodeJSON(w, http.StatusBadRequest, http_helper.ResponseBody{
-			Error:   "request doesn't pass validation",
-			Message: err.Error(),
-		})
 		return
 	}
 
 	userResponse, err := c.UserService.LoginUser(r.Context(), payload)
 	if errors.Is(err, user_error.ErrUserNotFound) {
-		http_helper.EncodeJSON(w, http.StatusNotFound, http_helper.ResponseBody{
-			Error:   "not found",
-			Message: err.Error(),
-		})
+		http_helper.HandleErrorResponse(w, http.StatusNotFound, err)
 		return
 	}
 	if errors.Is(err, user_error.ErrInvalidPassword) {
-		http_helper.EncodeJSON(w, http.StatusBadRequest, http_helper.ResponseBody{
-			Error:   "bad request",
-			Message: err.Error(),
-		})
+		http_helper.HandleErrorResponse(w, http.StatusBadRequest, err)
 		return
 	}
 	if err != nil {
-		http_helper.EncodeJSON(w, http.StatusInternalServerError, http_helper.ResponseBody{
-			Error:   "internal server",
-			Message: err.Error(),
-		})
+		http_helper.HandleErrorResponse(w, http.StatusInternalServerError, err)
 		return
 	}
 
@@ -126,8 +79,5 @@ func (c *UserControllerImpl) HandleLoginUser(w http.ResponseWriter, r *http.Requ
 	}
 	http.SetCookie(w, cookie)
 
-	http_helper.EncodeJSON(w, http.StatusOK, http_helper.ResponseBody{
-		Message: "User logged successfully",
-		Data:    userResponse,
-	})
+	http_helper.HandleSuccessResponse(w, http.StatusOK, "User logged successfully", userResponse)
 }

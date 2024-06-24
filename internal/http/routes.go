@@ -3,7 +3,7 @@ package http
 import (
 	"net/http"
 
-	http_helper "github.com/danzBraham/cats-social/internal/helpers/http"
+	"github.com/danzBraham/cats-social/internal/helpers/http_helper"
 	"github.com/danzBraham/cats-social/internal/http/controllers"
 	"github.com/danzBraham/cats-social/internal/repositories"
 	"github.com/danzBraham/cats-social/internal/services"

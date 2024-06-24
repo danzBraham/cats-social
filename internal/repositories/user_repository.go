@@ -4,8 +4,8 @@ import (
 	"context"
 	"errors"
 
-	user_entity "github.com/danzBraham/cats-social/internal/entities/user"
-	user_error "github.com/danzBraham/cats-social/internal/errors/user"
+	"github.com/danzBraham/cats-social/internal/entities/user_entity"
+	"github.com/danzBraham/cats-social/internal/errors/user_error"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )

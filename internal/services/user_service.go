@@ -4,8 +4,8 @@ import (
 	"context"
 	"time"
 
-	user_entity "github.com/danzBraham/cats-social/internal/entities/user"
-	user_error "github.com/danzBraham/cats-social/internal/errors/user"
+	"github.com/danzBraham/cats-social/internal/entities/user_entity"
+	"github.com/danzBraham/cats-social/internal/errors/user_error"
 	"github.com/danzBraham/cats-social/internal/helpers/bcrypt"
 	"github.com/danzBraham/cats-social/internal/helpers/jwt"
 	"github.com/danzBraham/cats-social/internal/repositories"
