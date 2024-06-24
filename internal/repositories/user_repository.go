@@ -4,16 +4,16 @@ import (
 	"context"
 	"errors"
 
-	"github.com/danzBraham/cats-social/internal/entities/user_entity"
-	"github.com/danzBraham/cats-social/internal/errors/user_error"
+	"github.com/danzBraham/cats-social/internal/entities/userentity"
+	"github.com/danzBraham/cats-social/internal/errors/usererror"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 type UserRepository interface {
 	VerifyEmail(ctx context.Context, email string) (bool, error)
-	CreateUser(ctx context.Context, user *user_entity.User) error
-	GetUserByEmail(ctx context.Context, email string) (*user_entity.User, error)
+	CreateUser(ctx context.Context, user *userentity.User) error
+	GetUserByEmail(ctx context.Context, email string) (*userentity.User, error)
 }
 
 type UserRepositoryImpl struct {
@@ -37,7 +37,7 @@ func (r *UserRepositoryImpl) VerifyEmail(ctx context.Context, email string) (boo
 	return true, nil
 }
 
-func (r *UserRepositoryImpl) CreateUser(ctx context.Context, user *user_entity.User) error {
+func (r *UserRepositoryImpl) CreateUser(ctx context.Context, user *userentity.User) error {
 	query := `
 		INSERT INTO users (id, name, email, password)
 		VALUES ($1, $2, $3, $4)
@@ -49,12 +49,12 @@ func (r *UserRepositoryImpl) CreateUser(ctx context.Context, user *user_entity.U
 	return nil
 }
 
-func (r *UserRepositoryImpl) GetUserByEmail(ctx context.Context, email string) (*user_entity.User, error) {
+func (r *UserRepositoryImpl) GetUserByEmail(ctx context.Context, email string) (*userentity.User, error) {
 	query := `SELECT id, name, email, password FROM users WHERE email = $1`
-	var user user_entity.User
+	var user userentity.User
 	err := r.DB.QueryRow(ctx, query, email).Scan(&user.Id, &user.Name, &user.Email, &user.Password)
 	if errors.Is(err, pgx.ErrNoRows) {
-		return nil, user_error.ErrUserNotFound
+		return nil, usererror.ErrUserNotFound
 	}
 	if err != nil {
 		return nil, err

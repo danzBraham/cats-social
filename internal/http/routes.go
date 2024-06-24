@@ -3,7 +3,7 @@ package http
 import (
 	"net/http"
 
-	"github.com/danzBraham/cats-social/internal/helpers/http_helper"
+	"github.com/danzBraham/cats-social/internal/helpers/httphelper"
 	"github.com/danzBraham/cats-social/internal/http/controllers"
 	"github.com/danzBraham/cats-social/internal/http/middlewares"
 	"github.com/danzBraham/cats-social/internal/repositories"
@@ -19,7 +19,7 @@ func (s *Server) RegisterRoutes() http.Handler {
 	r.Use(middleware.Recoverer)
 
 	r.Get("/", func(w http.ResponseWriter, r *http.Request) {
-		http_helper.EncodeJSON(w, http.StatusOK, http_helper.ResponseBody{
+		httphelper.EncodeJSON(w, http.StatusOK, httphelper.ResponseBody{
 			Message: "Welcome to Cats Social API",
 		})
 	})
@@ -41,14 +41,14 @@ func (s *Server) RegisterRoutes() http.Handler {
 	})
 
 	r.NotFound(func(w http.ResponseWriter, r *http.Request) {
-		http_helper.EncodeJSON(w, http.StatusNotFound, http_helper.ResponseBody{
+		httphelper.EncodeJSON(w, http.StatusNotFound, httphelper.ResponseBody{
 			Error:   "not found",
 			Message: "route does not exist",
 		})
 	})
 
 	r.MethodNotAllowed(func(w http.ResponseWriter, r *http.Request) {
-		http_helper.EncodeJSON(w, http.StatusMethodNotAllowed, http_helper.ResponseBody{
+		httphelper.EncodeJSON(w, http.StatusMethodNotAllowed, httphelper.ResponseBody{
 			Error:   "method not allowed",
 			Message: "method is not allowed",
 		})

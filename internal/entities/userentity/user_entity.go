@@ -1,4 +1,4 @@
-package user_entity
+package userentity
 
 type User struct {
 	Id        string

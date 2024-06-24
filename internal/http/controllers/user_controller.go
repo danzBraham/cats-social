@@ -5,9 +5,9 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/danzBraham/cats-social/internal/entities/user_entity"
-	"github.com/danzBraham/cats-social/internal/errors/user_error"
-	"github.com/danzBraham/cats-social/internal/helpers/http_helper"
+	"github.com/danzBraham/cats-social/internal/entities/userentity"
+	"github.com/danzBraham/cats-social/internal/errors/usererror"
+	"github.com/danzBraham/cats-social/internal/helpers/httphelper"
 	"github.com/danzBraham/cats-social/internal/services"
 )
 
@@ -25,19 +25,19 @@ func NewUserController(userService services.UserService) UserController {
 }
 
 func (c *UserControllerImpl) HandleRegisterUser(w http.ResponseWriter, r *http.Request) {
-	payload := &user_entity.RegisterUserRequest{}
-	err := http_helper.DecodeAndValidate(w, r, payload)
+	payload := &userentity.RegisterUserRequest{}
+	err := httphelper.DecodeAndValidate(w, r, payload)
 	if err != nil {
 		return
 	}
 
 	userResponse, err := c.UserService.RegisterUser(r.Context(), payload)
-	if errors.Is(err, user_error.ErrEmailAlreadyExists) {
-		http_helper.HandleErrorResponse(w, http.StatusConflict, err)
+	if errors.Is(err, usererror.ErrEmailAlreadyExists) {
+		httphelper.HandleErrorResponse(w, http.StatusConflict, err)
 		return
 	}
 	if err != nil {
-		http_helper.HandleErrorResponse(w, http.StatusInternalServerError, err)
+		httphelper.HandleErrorResponse(w, http.StatusInternalServerError, err)
 		return
 	}
 
@@ -48,27 +48,27 @@ func (c *UserControllerImpl) HandleRegisterUser(w http.ResponseWriter, r *http.R
 	}
 	http.SetCookie(w, cookie)
 
-	http_helper.HandleSuccessResponse(w, http.StatusCreated, "User registered successfully", userResponse)
+	httphelper.HandleSuccessResponse(w, http.StatusCreated, "User registered successfully", userResponse)
 }
 
 func (c *UserControllerImpl) HandleLoginUser(w http.ResponseWriter, r *http.Request) {
-	payload := &user_entity.LoginUserRequest{}
-	err := http_helper.DecodeAndValidate(w, r, payload)
+	payload := &userentity.LoginUserRequest{}
+	err := httphelper.DecodeAndValidate(w, r, payload)
 	if err != nil {
 		return
 	}
 
 	userResponse, err := c.UserService.LoginUser(r.Context(), payload)
-	if errors.Is(err, user_error.ErrUserNotFound) {
-		http_helper.HandleErrorResponse(w, http.StatusNotFound, err)
+	if errors.Is(err, usererror.ErrUserNotFound) {
+		httphelper.HandleErrorResponse(w, http.StatusNotFound, err)
 		return
 	}
-	if errors.Is(err, user_error.ErrInvalidPassword) {
-		http_helper.HandleErrorResponse(w, http.StatusBadRequest, err)
+	if errors.Is(err, usererror.ErrInvalidPassword) {
+		httphelper.HandleErrorResponse(w, http.StatusBadRequest, err)
 		return
 	}
 	if err != nil {
-		http_helper.HandleErrorResponse(w, http.StatusInternalServerError, err)
+		httphelper.HandleErrorResponse(w, http.StatusInternalServerError, err)
 		return
 	}
 
@@ -79,5 +79,5 @@ func (c *UserControllerImpl) HandleLoginUser(w http.ResponseWriter, r *http.Requ
 	}
 	http.SetCookie(w, cookie)
 
-	http_helper.HandleSuccessResponse(w, http.StatusOK, "User logged successfully", userResponse)
+	httphelper.HandleSuccessResponse(w, http.StatusOK, "User logged successfully", userResponse)
 }

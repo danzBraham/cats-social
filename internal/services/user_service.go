@@ -4,8 +4,8 @@ import (
 	"context"
 	"time"
 
-	"github.com/danzBraham/cats-social/internal/entities/user_entity"
-	"github.com/danzBraham/cats-social/internal/errors/user_error"
+	"github.com/danzBraham/cats-social/internal/entities/userentity"
+	"github.com/danzBraham/cats-social/internal/errors/usererror"
 	"github.com/danzBraham/cats-social/internal/helpers/bcrypt"
 	"github.com/danzBraham/cats-social/internal/helpers/jwt"
 	"github.com/danzBraham/cats-social/internal/repositories"
@@ -13,8 +13,8 @@ import (
 )
 
 type UserService interface {
-	RegisterUser(ctx context.Context, payload *user_entity.RegisterUserRequest) (*user_entity.RegisterUserResponse, error)
-	LoginUser(ctx context.Context, payload *user_entity.LoginUserRequest) (*user_entity.LoginUserResponse, error)
+	RegisterUser(ctx context.Context, payload *userentity.RegisterUserRequest) (*userentity.RegisterUserResponse, error)
+	LoginUser(ctx context.Context, payload *userentity.LoginUserRequest) (*userentity.LoginUserResponse, error)
 }
 
 type UserServiceImpl struct {
@@ -25,13 +25,13 @@ func NewUserService(userRepository repositories.UserRepository) UserService {
 	return &UserServiceImpl{UserRepository: userRepository}
 }
 
-func (s *UserServiceImpl) RegisterUser(ctx context.Context, payload *user_entity.RegisterUserRequest) (*user_entity.RegisterUserResponse, error) {
+func (s *UserServiceImpl) RegisterUser(ctx context.Context, payload *userentity.RegisterUserRequest) (*userentity.RegisterUserResponse, error) {
 	isEmailExists, err := s.UserRepository.VerifyEmail(ctx, payload.Email)
 	if err != nil {
 		return nil, err
 	}
 	if isEmailExists {
-		return nil, user_error.ErrEmailAlreadyExists
+		return nil, usererror.ErrEmailAlreadyExists
 	}
 
 	hashedPassword, err := bcrypt.HashPassword(payload.Password)
@@ -39,7 +39,7 @@ func (s *UserServiceImpl) RegisterUser(ctx context.Context, payload *user_entity
 		return nil, err
 	}
 
-	user := &user_entity.User{
+	user := &userentity.User{
 		Id:       ulid.Make().String(),
 		Name:     payload.Name,
 		Email:    payload.Email,
@@ -56,14 +56,14 @@ func (s *UserServiceImpl) RegisterUser(ctx context.Context, payload *user_entity
 		return nil, err
 	}
 
-	return &user_entity.RegisterUserResponse{
+	return &userentity.RegisterUserResponse{
 		Name:        user.Name,
 		Email:       user.Email,
 		AccessToken: token,
 	}, nil
 }
 
-func (s *UserServiceImpl) LoginUser(ctx context.Context, payload *user_entity.LoginUserRequest) (*user_entity.LoginUserResponse, error) {
+func (s *UserServiceImpl) LoginUser(ctx context.Context, payload *userentity.LoginUserRequest) (*userentity.LoginUserResponse, error) {
 	user, err := s.UserRepository.GetUserByEmail(ctx, payload.Email)
 	if err != nil {
 		return nil, err
@@ -71,7 +71,7 @@ func (s *UserServiceImpl) LoginUser(ctx context.Context, payload *user_entity.Lo
 
 	err = bcrypt.VerifyPassword(user.Password, payload.Password)
 	if err != nil {
-		return nil, user_error.ErrInvalidPassword
+		return nil, usererror.ErrInvalidPassword
 	}
 
 	token, err := jwt.GenerateToken(8*time.Hour, user.Id)
@@ -79,7 +79,7 @@ func (s *UserServiceImpl) LoginUser(ctx context.Context, payload *user_entity.Lo
 		return nil, err
 	}
 
-	return &user_entity.LoginUserResponse{
+	return &userentity.LoginUserResponse{
 		Name:        user.Name,
 		Email:       user.Email,
 		AccessToken: token,
