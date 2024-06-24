@@ -29,6 +29,11 @@ func (s *Server) RegisterRoutes() http.Handler {
 	userService := services.NewUserService(userRepository)
 	userController := controllers.NewUserController(userService)
 
+	// cat domain
+	catRepository := repositories.NewCatRepository(s.DB)
+	catService := services.NewCatService(catRepository)
+	catController := controllers.NewCatController(catService)
+
 	r.Route("/v1", func(r chi.Router) {
 		r.Route("/user", func(r chi.Router) {
 			r.Post("/register", userController.HandleRegisterUser)
@@ -37,6 +42,7 @@ func (s *Server) RegisterRoutes() http.Handler {
 
 		r.Route("/cat", func(r chi.Router) {
 			r.Use(middlewares.Auth)
+			r.Post("/", catController.HandleCreateCat)
 		})
 	})
 

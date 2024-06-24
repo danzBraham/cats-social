@@ -1,7 +1,7 @@
 DO $$
 BEGIN
-  IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'cat_races') THEN
-    CREATE TYPE cat_races AS ENUM (
+  IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'cat_race') THEN
+    CREATE TYPE cat_race AS ENUM (
       'Persian',
 			'Maine Coon',
 			'Siamese',
@@ -26,7 +26,7 @@ END $$;
 CREATE TABLE IF NOT EXISTS cats (
   id VARCHAR(26) PRIMARY KEY NOT NULL,
   name VARCHAR(30) NOT NULL,
-  race cat_races NOT NULL,
+  race cat_race NOT NULL,
   sex cat_sex NOT NULL,
   age_in_month INT NOT NULL CHECK (age_in_month BETWEEN 1 AND 120082),
   description VARCHAR(200) NOT NULL,
