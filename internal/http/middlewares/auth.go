@@ -18,19 +18,19 @@ func Auth(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		authHeader := r.Header.Get("Authorization")
 		if authHeader == "" {
-			httphelper.HandleErrorResponse(w, http.StatusUnauthorized, autherror.ErrMissingAuthHeader)
+			httphelper.ErrorResponse(w, http.StatusUnauthorized, autherror.ErrMissingAuthHeader)
 			return
 		}
 
 		tokenString := strings.TrimPrefix(authHeader, "Bearer ")
 		if tokenString == "" {
-			httphelper.HandleErrorResponse(w, http.StatusUnauthorized, autherror.ErrInvalidAuthHeader)
+			httphelper.ErrorResponse(w, http.StatusUnauthorized, autherror.ErrInvalidAuthHeader)
 			return
 		}
 
 		token, err := jwt.VerifyToken(tokenString)
 		if err != nil {
-			httphelper.HandleErrorResponse(w, http.StatusUnauthorized, err)
+			httphelper.ErrorResponse(w, http.StatusUnauthorized, err)
 			return
 		}
 

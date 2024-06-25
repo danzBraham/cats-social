@@ -23,14 +23,14 @@ func EncodeJSON(w http.ResponseWriter, status int, payload interface{}) error {
 	return json.NewEncoder(w).Encode(payload)
 }
 
-func HandleErrorResponse(w http.ResponseWriter, status int, err error) {
+func ErrorResponse(w http.ResponseWriter, status int, err error) {
 	EncodeJSON(w, status, ResponseBody{
 		Error:   http.StatusText(status),
 		Message: err.Error(),
 	})
 }
 
-func HandleSuccessResponse(w http.ResponseWriter, status int, message string, data interface{}) {
+func SuccessResponse(w http.ResponseWriter, status int, message string, data interface{}) {
 	EncodeJSON(w, status, ResponseBody{
 		Message: message,
 		Data:    data,
@@ -40,7 +40,7 @@ func HandleSuccessResponse(w http.ResponseWriter, status int, message string, da
 func DecodeAndValidate(w http.ResponseWriter, r *http.Request, payload interface{}) error {
 	err := DecodeJSON(r, payload)
 	if err != nil {
-		HandleErrorResponse(w, http.StatusBadRequest, err)
+		ErrorResponse(w, http.StatusBadRequest, err)
 		return err
 	}
 

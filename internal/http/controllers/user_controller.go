@@ -33,11 +33,11 @@ func (c *UserControllerImpl) HandleRegisterUser(w http.ResponseWriter, r *http.R
 
 	userResponse, err := c.UserService.RegisterUser(r.Context(), payload)
 	if errors.Is(err, usererror.ErrEmailAlreadyExists) {
-		httphelper.HandleErrorResponse(w, http.StatusConflict, err)
+		httphelper.ErrorResponse(w, http.StatusConflict, err)
 		return
 	}
 	if err != nil {
-		httphelper.HandleErrorResponse(w, http.StatusInternalServerError, err)
+		httphelper.ErrorResponse(w, http.StatusInternalServerError, err)
 		return
 	}
 
@@ -48,7 +48,7 @@ func (c *UserControllerImpl) HandleRegisterUser(w http.ResponseWriter, r *http.R
 	}
 	http.SetCookie(w, cookie)
 
-	httphelper.HandleSuccessResponse(w, http.StatusCreated, "User registered successfully", userResponse)
+	httphelper.SuccessResponse(w, http.StatusCreated, "User registered successfully", userResponse)
 }
 
 func (c *UserControllerImpl) HandleLoginUser(w http.ResponseWriter, r *http.Request) {
@@ -60,15 +60,15 @@ func (c *UserControllerImpl) HandleLoginUser(w http.ResponseWriter, r *http.Requ
 
 	userResponse, err := c.UserService.LoginUser(r.Context(), payload)
 	if errors.Is(err, usererror.ErrUserNotFound) {
-		httphelper.HandleErrorResponse(w, http.StatusNotFound, err)
+		httphelper.ErrorResponse(w, http.StatusNotFound, err)
 		return
 	}
 	if errors.Is(err, usererror.ErrInvalidPassword) {
-		httphelper.HandleErrorResponse(w, http.StatusBadRequest, err)
+		httphelper.ErrorResponse(w, http.StatusBadRequest, err)
 		return
 	}
 	if err != nil {
-		httphelper.HandleErrorResponse(w, http.StatusInternalServerError, err)
+		httphelper.ErrorResponse(w, http.StatusInternalServerError, err)
 		return
 	}
 
@@ -79,5 +79,5 @@ func (c *UserControllerImpl) HandleLoginUser(w http.ResponseWriter, r *http.Requ
 	}
 	http.SetCookie(w, cookie)
 
-	httphelper.HandleSuccessResponse(w, http.StatusOK, "User logged successfully", userResponse)
+	httphelper.SuccessResponse(w, http.StatusOK, "User logged successfully", userResponse)
 }

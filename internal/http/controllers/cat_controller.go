@@ -32,7 +32,7 @@ func NewCatController(catService services.CatService) CatController {
 func (c *CatControllerImpl) HandleCreateCat(w http.ResponseWriter, r *http.Request) {
 	userId, ok := r.Context().Value(middlewares.ContextUserIdKey).(string)
 	if !ok {
-		httphelper.HandleErrorResponse(w, http.StatusUnauthorized, autherror.ErrUserIdNotFoundInTheContext)
+		httphelper.ErrorResponse(w, http.StatusUnauthorized, autherror.ErrUserIdNotFoundInTheContext)
 		return
 	}
 
@@ -44,17 +44,17 @@ func (c *CatControllerImpl) HandleCreateCat(w http.ResponseWriter, r *http.Reque
 
 	catResponse, err := c.CatService.CreateCat(r.Context(), userId, payload)
 	if err != nil {
-		httphelper.HandleErrorResponse(w, http.StatusInternalServerError, err)
+		httphelper.ErrorResponse(w, http.StatusInternalServerError, err)
 		return
 	}
 
-	httphelper.HandleSuccessResponse(w, http.StatusCreated, "success", catResponse)
+	httphelper.SuccessResponse(w, http.StatusCreated, "success", catResponse)
 }
 
 func (c *CatControllerImpl) HandleGetCats(w http.ResponseWriter, r *http.Request) {
 	userId, ok := r.Context().Value(middlewares.ContextUserIdKey).(string)
 	if !ok {
-		httphelper.HandleErrorResponse(w, http.StatusUnauthorized, autherror.ErrUserIdNotFoundInTheContext)
+		httphelper.ErrorResponse(w, http.StatusUnauthorized, autherror.ErrUserIdNotFoundInTheContext)
 		return
 	}
 
@@ -87,11 +87,11 @@ func (c *CatControllerImpl) HandleGetCats(w http.ResponseWriter, r *http.Request
 
 	catsResponse, err := c.CatService.GetCats(r.Context(), userId, params)
 	if err != nil {
-		httphelper.HandleErrorResponse(w, http.StatusInternalServerError, err)
+		httphelper.ErrorResponse(w, http.StatusInternalServerError, err)
 		return
 	}
 
-	httphelper.HandleSuccessResponse(w, http.StatusOK, "success", catsResponse)
+	httphelper.SuccessResponse(w, http.StatusOK, "success", catsResponse)
 }
 
 func (c *CatControllerImpl) HandleUpdateCatById(w http.ResponseWriter, r *http.Request) {
@@ -104,28 +104,28 @@ func (c *CatControllerImpl) HandleUpdateCatById(w http.ResponseWriter, r *http.R
 	id := chi.URLParam(r, "id")
 	err = c.CatService.UpdateCatById(r.Context(), id, payload)
 	if errors.Is(err, caterror.ErrIdNotFound) {
-		httphelper.HandleErrorResponse(w, http.StatusNotFound, err)
+		httphelper.ErrorResponse(w, http.StatusNotFound, err)
 		return
 	}
 	if err != nil {
-		httphelper.HandleErrorResponse(w, http.StatusInternalServerError, err)
+		httphelper.ErrorResponse(w, http.StatusInternalServerError, err)
 		return
 	}
 
-	httphelper.HandleSuccessResponse(w, http.StatusOK, "successfully update cat", nil)
+	httphelper.SuccessResponse(w, http.StatusOK, "successfully update cat", nil)
 }
 
 func (c *CatControllerImpl) HandleDeleteCatById(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 	err := c.CatService.DeleteCatById(r.Context(), id)
 	if errors.Is(err, caterror.ErrIdNotFound) {
-		httphelper.HandleErrorResponse(w, http.StatusNotFound, err)
+		httphelper.ErrorResponse(w, http.StatusNotFound, err)
 		return
 	}
 	if err != nil {
-		httphelper.HandleErrorResponse(w, http.StatusInternalServerError, err)
+		httphelper.ErrorResponse(w, http.StatusInternalServerError, err)
 		return
 	}
 
-	httphelper.HandleSuccessResponse(w, http.StatusOK, "successfully delete cat", nil)
+	httphelper.SuccessResponse(w, http.StatusOK, "successfully delete cat", nil)
 }
