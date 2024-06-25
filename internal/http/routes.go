@@ -45,6 +45,7 @@ func (s *Server) RegisterRoutes() http.Handler {
 			r.Post("/", catController.HandleCreateCat)
 			r.Get("/", catController.HandleGetCats)
 			r.Put("/{id}", catController.HandleUpdateCatById)
+			r.Delete("/{id}", catController.HandleDeleteCatById)
 		})
 	})
 

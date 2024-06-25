@@ -17,6 +17,7 @@ type CatRepository interface {
 	CreateCat(ctx context.Context, cat *catentity.Cat) (*catentity.Cat, error)
 	GetCats(ctx context.Context, userId string, params *catentity.CatQueryParams) ([]*catentity.Cat, error)
 	UpdateCatById(ctx context.Context, id string, cat *catentity.Cat) error
+	DeleteCatById(ctx context.Context, id string) error
 }
 
 type CatRepositoryImpl struct {
@@ -210,6 +211,19 @@ func (r *CatRepositoryImpl) UpdateCatById(ctx context.Context, id string, cat *c
 		&cat.ImageUrls,
 		id,
 	)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (r *CatRepositoryImpl) DeleteCatById(ctx context.Context, id string) error {
+	query := `
+		UPDATE cats
+		SET is_deleted = true
+		WHERE id = $1
+	`
+	_, err := r.DB.Exec(ctx, query, id)
 	if err != nil {
 		return err
 	}

@@ -18,6 +18,7 @@ type CatController interface {
 	HandleCreateCat(w http.ResponseWriter, r *http.Request)
 	HandleGetCats(w http.ResponseWriter, r *http.Request)
 	HandleUpdateCatById(w http.ResponseWriter, r *http.Request)
+	HandleDeleteCatById(w http.ResponseWriter, r *http.Request)
 }
 
 type CatControllerImpl struct {
@@ -112,4 +113,19 @@ func (c *CatControllerImpl) HandleUpdateCatById(w http.ResponseWriter, r *http.R
 	}
 
 	httphelper.HandleSuccessResponse(w, http.StatusOK, "successfully update cat", nil)
+}
+
+func (c *CatControllerImpl) HandleDeleteCatById(w http.ResponseWriter, r *http.Request) {
+	id := chi.URLParam(r, "id")
+	err := c.CatService.DeleteCatById(r.Context(), id)
+	if errors.Is(err, caterror.ErrIdNotFound) {
+		httphelper.HandleErrorResponse(w, http.StatusNotFound, err)
+		return
+	}
+	if err != nil {
+		httphelper.HandleErrorResponse(w, http.StatusInternalServerError, err)
+		return
+	}
+
+	httphelper.HandleSuccessResponse(w, http.StatusOK, "successfully delete cat", nil)
 }
