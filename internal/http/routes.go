@@ -34,6 +34,11 @@ func (s *Server) RegisterRoutes() http.Handler {
 	catService := services.NewCatService(catRepository)
 	catController := controllers.NewCatController(catService)
 
+	// match cat domain
+	matchCatRepository := repositories.NewMatchCatRepository(s.DB)
+	matchCatService := services.NewMatchCatService(matchCatRepository, catRepository)
+	matchCatController := controllers.NewMatchCatController(matchCatService)
+
 	r.Route("/v1", func(r chi.Router) {
 		r.Route("/user", func(r chi.Router) {
 			r.Post("/register", userController.HandleRegisterUser)
@@ -46,6 +51,10 @@ func (s *Server) RegisterRoutes() http.Handler {
 			r.Get("/", catController.HandleGetCats)
 			r.Put("/{id}", catController.HandleUpdateCatById)
 			r.Delete("/{id}", catController.HandleDeleteCatById)
+
+			r.Route("/match", func(r chi.Router) {
+				r.Post("/", matchCatController.HandleCreateMatchCat)
+			})
 		})
 	})
 

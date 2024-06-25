@@ -14,8 +14,9 @@ import (
 
 type CatRepository interface {
 	VerifyId(ctx context.Context, id string) (bool, error)
+	VerifyOwner(ctx context.Context, id, ownerId string) (bool, error)
 	CreateCat(ctx context.Context, cat *catentity.Cat) (*catentity.Cat, error)
-	GetCats(ctx context.Context, userId string, params *catentity.CatQueryParams) ([]*catentity.Cat, error)
+	GetCats(ctx context.Context, ownerId string, params *catentity.CatQueryParams) ([]*catentity.Cat, error)
 	UpdateCatById(ctx context.Context, id string, cat *catentity.Cat) error
 	DeleteCatById(ctx context.Context, id string) error
 }
@@ -32,6 +33,19 @@ func (r *CatRepositoryImpl) VerifyId(ctx context.Context, id string) (bool, erro
 	query := `SELECT 1 FROM cats WHERE id = $1`
 	var result int
 	err := r.DB.QueryRow(ctx, query, id).Scan(&result)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return false, nil
+	}
+	if err != nil {
+		return false, err
+	}
+	return true, nil
+}
+
+func (r *CatRepositoryImpl) VerifyOwner(ctx context.Context, id, ownerId string) (bool, error) {
+	query := `SELECT 1 FROM cats WHERE id = $1 AND owner_id = $2`
+	var result int
+	err := r.DB.QueryRow(ctx, query, id, ownerId).Scan(&result)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return false, nil
 	}
@@ -65,7 +79,7 @@ func (r *CatRepositoryImpl) CreateCat(ctx context.Context, cat *catentity.Cat) (
 	return cat, nil
 }
 
-func (r *CatRepositoryImpl) GetCats(ctx context.Context, userId string, params *catentity.CatQueryParams) ([]*catentity.Cat, error) {
+func (r *CatRepositoryImpl) GetCats(ctx context.Context, ownerId string, params *catentity.CatQueryParams) ([]*catentity.Cat, error) {
 	query := `
 		SELECT id, name, race, sex, age_in_month, description, image_urls, has_matched, created_at
 		FROM cats
@@ -146,7 +160,7 @@ func (r *CatRepositoryImpl) GetCats(ctx context.Context, userId string, params *
 
 	if params.Owned {
 		query += ` AND owner_id = $` + strconv.Itoa(argId)
-		args = append(args, userId)
+		args = append(args, ownerId)
 		argId++
 	}
 
