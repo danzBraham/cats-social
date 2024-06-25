@@ -14,6 +14,7 @@ import (
 
 type MatchCatController interface {
 	HandleCreateMatchCat(w http.ResponseWriter, r *http.Request)
+	HandleGetMatchCats(w http.ResponseWriter, r *http.Request)
 }
 
 type MatchCatControllerImpl struct {
@@ -50,4 +51,21 @@ func (c *MatchCatControllerImpl) HandleCreateMatchCat(w http.ResponseWriter, r *
 	}
 
 	httphelper.SuccessResponse(w, http.StatusCreated, "successfully send match request", nil)
+}
+
+func (c *MatchCatControllerImpl) HandleGetMatchCats(w http.ResponseWriter, r *http.Request) {
+	userId, ok := r.Context().Value(middlewares.ContextUserIdKey).(string)
+	if !ok {
+		httphelper.ErrorResponse(w, http.StatusUnauthorized, autherror.ErrUserIdNotFoundInTheContext)
+		return
+	}
+
+	matchCatResponses, err := c.MatchCatService.GetMatchCats(r.Context(), userId)
+	if err != nil {
+		httphelper.ErrorResponse(w, http.StatusInternalServerError, err)
+		return
+	}
+
+	httphelper.SuccessResponse(w, http.StatusOK, "successfully get match requests", matchCatResponses)
+
 }

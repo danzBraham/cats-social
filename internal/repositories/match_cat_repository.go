@@ -3,6 +3,7 @@ package repositories
 import (
 	"context"
 	"errors"
+	"time"
 
 	"github.com/danzBraham/cats-social/internal/entities/matchcatentity"
 	"github.com/danzBraham/cats-social/internal/errors/matchcaterror"
@@ -15,6 +16,7 @@ type MatchCatRepository interface {
 	VerifyBothCatsNotMatched(ctx context.Context, matchCatId, userCatId string) error
 	VerifyBothCatsHaveTheSameOwner(ctx context.Context, matchCatId, userCatId string) (bool, error)
 	CreateMatchCat(ctx context.Context, matchCat *matchcatentity.MatchCat) error
+	GetMatchCats(ctx context.Context, issuerId string) ([]*matchcatentity.MatchCat, error)
 }
 
 type MatchCatRepositoryImpl struct {
@@ -95,4 +97,44 @@ func (r *MatchCatRepositoryImpl) CreateMatchCat(ctx context.Context, matchCat *m
 		return err
 	}
 	return nil
+}
+
+func (r *MatchCatRepositoryImpl) GetMatchCats(ctx context.Context, issuerId string) ([]*matchcatentity.MatchCat, error) {
+	query := `
+		SELECT id, 
+					match_cat_id,
+					user_cat_id,
+					message,
+					issued_by,
+					created_at
+		FROM match_cats
+		WHERE issued_by = $1
+			AND is_deleted = false
+	`
+	rows, err := r.DB.Query(ctx, query, issuerId)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	matchCats := []*matchcatentity.MatchCat{}
+	for rows.Next() {
+		var matchCat matchcatentity.MatchCat
+		var createdAt time.Time
+		err := rows.Scan(
+			&matchCat.Id,
+			&matchCat.MatchCatId,
+			&matchCat.UserCatId,
+			&matchCat.Message,
+			&matchCat.IssuedBy,
+			&createdAt,
+		)
+		if err != nil {
+			return nil, err
+		}
+		matchCat.CreatedAt = createdAt.Format(time.RFC3339)
+		matchCats = append(matchCats, &matchCat)
+	}
+
+	return matchCats, nil
 }

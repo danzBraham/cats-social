@@ -3,6 +3,7 @@ package services
 import (
 	"context"
 
+	"github.com/danzBraham/cats-social/internal/entities/catentity"
 	"github.com/danzBraham/cats-social/internal/entities/matchcatentity"
 	"github.com/danzBraham/cats-social/internal/errors/matchcaterror"
 	"github.com/danzBraham/cats-social/internal/repositories"
@@ -11,20 +12,24 @@ import (
 
 type MatchCatService interface {
 	CreateMatchCat(ctx context.Context, userId string, payload *matchcatentity.CreateMatchCatRequest) error
+	GetMatchCats(ctx context.Context, userId string) ([]*matchcatentity.GetMatchCatResponse, error)
 }
 
 type MatchCatServiceImpl struct {
 	MatchCatRepository repositories.MatchCatRepository
 	CatRepository      repositories.CatRepository
+	UserRepository     repositories.UserRepository
 }
 
 func NewMatchCatService(
 	matchCatRepository repositories.MatchCatRepository,
 	catRepository repositories.CatRepository,
+	userRepository repositories.UserRepository,
 ) MatchCatService {
 	return &MatchCatServiceImpl{
 		MatchCatRepository: matchCatRepository,
 		CatRepository:      catRepository,
+		UserRepository:     userRepository,
 	}
 }
 
@@ -88,4 +93,64 @@ func (s *MatchCatServiceImpl) CreateMatchCat(ctx context.Context, userId string,
 	}
 
 	return nil
+}
+
+func (s *MatchCatServiceImpl) GetMatchCats(ctx context.Context, userId string) ([]*matchcatentity.GetMatchCatResponse, error) {
+	matchCats, err := s.MatchCatRepository.GetMatchCats(ctx, userId)
+	if err != nil {
+		return nil, err
+	}
+
+	matchCatResponses := []*matchcatentity.GetMatchCatResponse{}
+	for _, matchCat := range matchCats {
+		issuerDetail, err := s.UserRepository.GetUserById(ctx, matchCat.IssuedBy)
+		if err != nil {
+			return nil, err
+		}
+
+		matchCatDetail, err := s.CatRepository.GetCatById(ctx, matchCat.MatchCatId)
+		if err != nil {
+			return nil, err
+		}
+
+		userCatDetail, err := s.CatRepository.GetCatById(ctx, matchCat.UserCatId)
+		if err != nil {
+			return nil, err
+		}
+
+		matchCatResponses = append(matchCatResponses, &matchcatentity.GetMatchCatResponse{
+			Id: matchCat.Id,
+			IssuedBy: matchcatentity.IssuerDetail{
+				Name:      issuerDetail.Name,
+				Email:     issuerDetail.Email,
+				CreatedAt: issuerDetail.CreatedAt,
+			},
+			MatchCatDetail: catentity.GetCatResponse{
+				Id:          matchCatDetail.Id,
+				Name:        matchCatDetail.Name,
+				Race:        matchCatDetail.Race,
+				Sex:         matchCatDetail.Sex,
+				AgeInMonth:  matchCatDetail.AgeInMonth,
+				Description: matchCatDetail.Description,
+				ImageUrls:   matchCatDetail.ImageUrls,
+				HasMatched:  matchCatDetail.HasMatched,
+				CreatedAt:   matchCatDetail.CreatedAt,
+			},
+			UserCatDetail: catentity.GetCatResponse{
+				Id:          userCatDetail.Id,
+				Name:        userCatDetail.Name,
+				Race:        userCatDetail.Race,
+				Sex:         userCatDetail.Sex,
+				AgeInMonth:  userCatDetail.AgeInMonth,
+				Description: userCatDetail.Description,
+				ImageUrls:   userCatDetail.ImageUrls,
+				HasMatched:  userCatDetail.HasMatched,
+				CreatedAt:   userCatDetail.CreatedAt,
+			},
+			Message:   matchCat.Message,
+			CreatedAt: matchCat.CreatedAt,
+		})
+	}
+
+	return matchCatResponses, nil
 }

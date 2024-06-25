@@ -3,6 +3,7 @@ package repositories
 import (
 	"context"
 	"errors"
+	"time"
 
 	"github.com/danzBraham/cats-social/internal/entities/userentity"
 	"github.com/danzBraham/cats-social/internal/errors/usererror"
@@ -14,6 +15,7 @@ type UserRepository interface {
 	VerifyEmail(ctx context.Context, email string) (bool, error)
 	CreateUser(ctx context.Context, user *userentity.User) error
 	GetUserByEmail(ctx context.Context, email string) (*userentity.User, error)
+	GetUserById(ctx context.Context, id string) (*userentity.User, error)
 }
 
 type UserRepositoryImpl struct {
@@ -50,14 +52,59 @@ func (r *UserRepositoryImpl) CreateUser(ctx context.Context, user *userentity.Us
 }
 
 func (r *UserRepositoryImpl) GetUserByEmail(ctx context.Context, email string) (*userentity.User, error) {
-	query := `SELECT id, name, email, password FROM users WHERE email = $1`
+	query := `
+		SELECT id,
+					name,
+					email,
+					password,
+					created_at
+		FROM users 
+		WHERE email = $1
+	`
 	var user userentity.User
-	err := r.DB.QueryRow(ctx, query, email).Scan(&user.Id, &user.Name, &user.Email, &user.Password)
+	var createdAt time.Time
+	err := r.DB.QueryRow(ctx, query, email).Scan(
+		&user.Id,
+		&user.Name,
+		&user.Email,
+		&user.Password,
+		&createdAt,
+	)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, usererror.ErrUserNotFound
 	}
 	if err != nil {
 		return nil, err
 	}
+	user.CreatedAt = createdAt.Format(time.RFC3339)
+	return &user, nil
+}
+
+func (r *UserRepositoryImpl) GetUserById(ctx context.Context, email string) (*userentity.User, error) {
+	query := `
+		SELECT id,
+					name,
+					email,
+					password,
+					created_at
+		FROM users 
+		WHERE id = $1
+	`
+	var user userentity.User
+	var createdAt time.Time
+	err := r.DB.QueryRow(ctx, query, email).Scan(
+		&user.Id,
+		&user.Name,
+		&user.Email,
+		&user.Password,
+		&createdAt,
+	)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, usererror.ErrUserNotFound
+	}
+	if err != nil {
+		return nil, err
+	}
+	user.CreatedAt = createdAt.Format(time.RFC3339)
 	return &user, nil
 }

@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/danzBraham/cats-social/internal/entities/catentity"
+	"github.com/danzBraham/cats-social/internal/errors/caterror"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
@@ -17,6 +18,7 @@ type CatRepository interface {
 	VerifyOwner(ctx context.Context, id, ownerId string) (bool, error)
 	CreateCat(ctx context.Context, cat *catentity.Cat) (*catentity.Cat, error)
 	GetCats(ctx context.Context, ownerId string, params *catentity.CatQueryParams) ([]*catentity.Cat, error)
+	GetCatById(ctx context.Context, id string) (*catentity.Cat, error)
 	UpdateCatById(ctx context.Context, id string, cat *catentity.Cat) error
 	DeleteCatById(ctx context.Context, id string) error
 }
@@ -81,7 +83,15 @@ func (r *CatRepositoryImpl) CreateCat(ctx context.Context, cat *catentity.Cat) (
 
 func (r *CatRepositoryImpl) GetCats(ctx context.Context, ownerId string, params *catentity.CatQueryParams) ([]*catentity.Cat, error) {
 	query := `
-		SELECT id, name, race, sex, age_in_month, description, image_urls, has_matched, created_at
+		SELECT id,
+					name,
+					race,
+					sex,
+					age_in_month,
+					description,
+					image_urls,
+					has_matched,
+					created_at
 		FROM cats
 		WHERE is_deleted = false
 	`
@@ -202,6 +212,46 @@ func (r *CatRepositoryImpl) GetCats(ctx context.Context, ownerId string, params 
 	}
 
 	return cats, nil
+}
+
+func (r *CatRepositoryImpl) GetCatById(ctx context.Context, id string) (*catentity.Cat, error) {
+	query := `
+		SELECT id,
+					name,
+					race,
+					sex,
+					age_in_month,
+					description,
+					image_urls,
+					has_matched,
+					owner_id,
+					created_at
+		FROM cats
+		WHERE id = $1
+			AND is_deleted = false
+	`
+	var cat catentity.Cat
+	var createdAt time.Time
+	err := r.DB.QueryRow(ctx, query, id).Scan(
+		&cat.Id,
+		&cat.Name,
+		&cat.Race,
+		&cat.Sex,
+		&cat.AgeInMonth,
+		&cat.Description,
+		&cat.ImageUrls,
+		&cat.HasMatched,
+		&cat.OwnerId,
+		&createdAt,
+	)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, caterror.ErrCatNotFound
+	}
+	if err != nil {
+		return nil, err
+	}
+	cat.CreatedAt = createdAt.Format(time.RFC3339)
+	return &cat, nil
 }
 
 func (r *CatRepositoryImpl) UpdateCatById(ctx context.Context, id string, cat *catentity.Cat) error {
