@@ -155,7 +155,7 @@ func (r *CatRepositoryImpl) GetCats(ctx context.Context, userId string, params *
 		argId++
 	}
 
-	query += ` LIMIT $` + strconv.Itoa(argId) + ` OFFSET $` + strconv.Itoa(argId+1)
+	query += ` ORDER BY updated_at DESC LIMIT $` + strconv.Itoa(argId) + ` OFFSET $` + strconv.Itoa(argId+1)
 	args = append(args, params.Limit, params.Offset)
 
 	rows, err := r.DB.Query(ctx, query, args...)
