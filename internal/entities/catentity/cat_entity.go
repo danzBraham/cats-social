@@ -73,3 +73,12 @@ type GetCatResponse struct {
 	HasMatched  bool     `json:"hasMatched"`
 	CreatedAt   string   `json:"createdAt"`
 }
+
+type UpdateCatRequest struct {
+	Name        string   `json:"name" validate:"required,min=1,max=30"`
+	Race        Race     `json:"race" validate:"required,oneof='Persian' 'Maine Coon' 'Siamese' 'Ragdoll' 'Bengal' 'Sphynx' 'British Shorthair' 'Abyssinian' 'Scottish Fold' 'Birman'"`
+	Sex         Sex      `json:"sex" validate:"required,oneof='male' 'female'"`
+	AgeInMonth  int      `json:"ageInMonth" validate:"required,min=1,max=120082"`
+	Description string   `json:"description" validate:"required,min=1,max=200"`
+	ImageUrls   []string `json:"imageUrls" validate:"required,min=1,dive,required,http_url"`
+}

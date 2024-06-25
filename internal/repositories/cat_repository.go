@@ -2,17 +2,21 @@ package repositories
 
 import (
 	"context"
+	"errors"
 	"strconv"
 	"strings"
 	"time"
 
 	"github.com/danzBraham/cats-social/internal/entities/catentity"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 type CatRepository interface {
+	VerifyId(ctx context.Context, id string) (bool, error)
 	CreateCat(ctx context.Context, cat *catentity.Cat) (*catentity.Cat, error)
 	GetCats(ctx context.Context, userId string, params *catentity.CatQueryParams) ([]*catentity.Cat, error)
+	UpdateCatById(ctx context.Context, id string, cat *catentity.Cat) error
 }
 
 type CatRepositoryImpl struct {
@@ -21,6 +25,19 @@ type CatRepositoryImpl struct {
 
 func NewCatRepository(db *pgxpool.Pool) CatRepository {
 	return &CatRepositoryImpl{DB: db}
+}
+
+func (r *CatRepositoryImpl) VerifyId(ctx context.Context, id string) (bool, error) {
+	query := `SELECT 1 FROM cats WHERE id = $1`
+	var result int
+	err := r.DB.QueryRow(ctx, query, id).Scan(&result)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return false, nil
+	}
+	if err != nil {
+		return false, err
+	}
+	return true, nil
 }
 
 func (r *CatRepositoryImpl) CreateCat(ctx context.Context, cat *catentity.Cat) (*catentity.Cat, error) {
@@ -170,4 +187,31 @@ func (r *CatRepositoryImpl) GetCats(ctx context.Context, userId string, params *
 	}
 
 	return cats, nil
+}
+
+func (r *CatRepositoryImpl) UpdateCatById(ctx context.Context, id string, cat *catentity.Cat) error {
+	query := `
+		UPDATE cats
+		SET name = $1,
+				race = $2, 
+				sex = $3, 
+				age_in_month = $4, 
+				description = $5, 
+				image_urls = $6,
+				updated_at = NOW()
+		WHERE id = $7
+	`
+	_, err := r.DB.Exec(ctx, query,
+		&cat.Name,
+		&cat.Race,
+		&cat.Sex,
+		&cat.AgeInMonth,
+		&cat.Description,
+		&cat.ImageUrls,
+		id,
+	)
+	if err != nil {
+		return err
+	}
+	return nil
 }

@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/danzBraham/cats-social/internal/entities/catentity"
+	"github.com/danzBraham/cats-social/internal/errors/caterror"
 	"github.com/danzBraham/cats-social/internal/repositories"
 	"github.com/oklog/ulid/v2"
 )
@@ -11,6 +12,7 @@ import (
 type CatService interface {
 	CreateCat(ctx context.Context, userId string, payload *catentity.CreateCatRequest) (*catentity.CreateCatResponse, error)
 	GetCats(ctx context.Context, userId string, params *catentity.CatQueryParams) ([]*catentity.GetCatResponse, error)
+	UpdateCatById(ctx context.Context, id string, payload *catentity.UpdateCatRequest) error
 }
 
 type CatServiceImpl struct {
@@ -66,4 +68,30 @@ func (s *CatServiceImpl) GetCats(ctx context.Context, userId string, params *cat
 	}
 
 	return catsResponse, nil
+}
+
+func (s *CatServiceImpl) UpdateCatById(ctx context.Context, id string, payload *catentity.UpdateCatRequest) error {
+	isIdExists, err := s.CatRepository.VerifyId(ctx, id)
+	if err != nil {
+		return err
+	}
+	if !isIdExists {
+		return caterror.ErrIdNotFound
+	}
+
+	cat := &catentity.Cat{
+		Name:        payload.Name,
+		Race:        payload.Race,
+		Sex:         payload.Sex,
+		AgeInMonth:  payload.AgeInMonth,
+		Description: payload.Description,
+		ImageUrls:   payload.ImageUrls,
+	}
+
+	err = s.CatRepository.UpdateCatById(ctx, id, cat)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }

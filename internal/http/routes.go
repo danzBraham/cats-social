@@ -44,6 +44,7 @@ func (s *Server) RegisterRoutes() http.Handler {
 			r.Use(middlewares.Auth)
 			r.Post("/", catController.HandleCreateCat)
 			r.Get("/", catController.HandleGetCats)
+			r.Put("/{id}", catController.HandleUpdateCatById)
 		})
 	})
 
