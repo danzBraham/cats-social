@@ -56,6 +56,7 @@ func (s *Server) RegisterRoutes() http.Handler {
 				r.Post("/", matchCatController.HandleCreateMatchCat)
 				r.Get("/", matchCatController.HandleGetMatchCats)
 				r.Post("/approve", matchCatController.HandleApproveMatchCat)
+				r.Post("/reject", matchCatController.HandleRejectMatchCat)
 			})
 		})
 	})

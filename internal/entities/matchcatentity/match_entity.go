@@ -46,3 +46,7 @@ type GetMatchCatResponse struct {
 type ApproveMatchCatRequest struct {
 	MatchId string `json:"matchId" validate:"required,len=26"`
 }
+
+type RejectMatchCatRequest struct {
+	MatchId string `json:"matchId" validate:"required,len=26"`
+}

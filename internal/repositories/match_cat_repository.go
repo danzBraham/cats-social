@@ -14,12 +14,14 @@ import (
 type MatchCatRepository interface {
 	VerifyMatchId(ctx context.Context, matchId string) (bool, error)
 	VerifyMatchIdValidity(ctx context.Context, matchId string) (bool, error)
+	VerifyRequestIssuer(ctx context.Context, matchId, issuerId string) (bool, error)
 	VerifyBothCatsGender(ctx context.Context, matchCatId, userCatId string) (bool, error)
 	VerifyBothCatsNotMatched(ctx context.Context, matchCatId, userCatId string) error
 	VerifyBothCatsHaveTheSameOwner(ctx context.Context, matchCatId, userCatId string) (bool, error)
 	CreateMatchCat(ctx context.Context, matchCat *matchcatentity.MatchCat) error
 	GetMatchCats(ctx context.Context, issuerId string) ([]*matchcatentity.MatchCat, error)
 	ApproveMatchCat(ctx context.Context, matchId string) error
+	RejectMatchCat(ctx context.Context, matchId string) error
 }
 
 type MatchCatRepositoryImpl struct {
@@ -57,6 +59,24 @@ func (r *MatchCatRepositoryImpl) VerifyMatchIdValidity(ctx context.Context, matc
 	`
 	var exists int
 	err := r.DB.QueryRow(ctx, query, matchId).Scan(&exists)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return false, nil
+	}
+	if err != nil {
+		return false, err
+	}
+	return true, nil
+}
+
+func (r *MatchCatRepositoryImpl) VerifyRequestIssuer(ctx context.Context, matchId, issuerId string) (bool, error) {
+	query := `
+		SELECT 1
+		FROM match_cats
+		WHERE id = $1
+			AND issued_by = $2
+	`
+	var exists int
+	err := r.DB.QueryRow(ctx, query, matchId, issuerId).Scan(&exists)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return false, nil
 	}
@@ -226,5 +246,18 @@ func (r *MatchCatRepositoryImpl) ApproveMatchCat(ctx context.Context, matchId st
 		return err
 	}
 
+	return nil
+}
+
+func (r *MatchCatRepositoryImpl) RejectMatchCat(ctx context.Context, matchId string) error {
+	query := `
+		UPDATE match_cats
+		SET status = 'rejected'
+		WHERE id = $1
+	`
+	_, err := r.DB.Exec(ctx, query, matchId)
+	if err != nil {
+		return err
+	}
 	return nil
 }

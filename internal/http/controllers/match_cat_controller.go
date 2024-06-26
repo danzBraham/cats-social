@@ -16,6 +16,7 @@ type MatchCatController interface {
 	HandleCreateMatchCat(w http.ResponseWriter, r *http.Request)
 	HandleGetMatchCats(w http.ResponseWriter, r *http.Request)
 	HandleApproveMatchCat(w http.ResponseWriter, r *http.Request)
+	HandleRejectMatchCat(w http.ResponseWriter, r *http.Request)
 }
 
 type MatchCatControllerImpl struct {
@@ -92,4 +93,38 @@ func (c *MatchCatControllerImpl) HandleApproveMatchCat(w http.ResponseWriter, r 
 	}
 
 	httphelper.SuccessResponse(w, http.StatusOK, "successfully matches the cat match request", nil)
+}
+
+func (c *MatchCatControllerImpl) HandleRejectMatchCat(w http.ResponseWriter, r *http.Request) {
+	userId, ok := r.Context().Value(middlewares.ContextUserIdKey).(string)
+	if !ok {
+		httphelper.ErrorResponse(w, http.StatusUnauthorized, autherror.ErrUserIdNotFoundInTheContext)
+		return
+	}
+
+	payload := &matchcatentity.RejectMatchCatRequest{}
+	err := httphelper.DecodeAndValidate(w, r, payload)
+	if err != nil {
+		return
+	}
+
+	err = c.MatchCatService.RejectMatchCat(r.Context(), userId, payload)
+	if errors.Is(err, matchcaterror.ErrMatchIdNotFound) {
+		httphelper.ErrorResponse(w, http.StatusNotFound, err)
+		return
+	}
+	if errors.Is(err, matchcaterror.ErrMatchIdIsNoLongerValid) {
+		httphelper.ErrorResponse(w, http.StatusBadRequest, err)
+		return
+	}
+	if errors.Is(err, matchcaterror.ErrUnauthorizedDecision) {
+		httphelper.ErrorResponse(w, http.StatusForbidden, err)
+		return
+	}
+	if err != nil {
+		httphelper.ErrorResponse(w, http.StatusInternalServerError, err)
+		return
+	}
+
+	httphelper.SuccessResponse(w, http.StatusOK, "successfully reject the cat match request", nil)
 }

@@ -14,6 +14,7 @@ type MatchCatService interface {
 	CreateMatchCat(ctx context.Context, userId string, payload *matchcatentity.CreateMatchCatRequest) error
 	GetMatchCats(ctx context.Context, userId string) ([]*matchcatentity.GetMatchCatResponse, error)
 	ApproveMatchCat(ctx context.Context, payload *matchcatentity.ApproveMatchCatRequest) error
+	RejectMatchCat(ctx context.Context, userId string, payload *matchcatentity.RejectMatchCatRequest) error
 }
 
 type MatchCatServiceImpl struct {
@@ -174,6 +175,39 @@ func (s *MatchCatServiceImpl) ApproveMatchCat(ctx context.Context, payload *matc
 	}
 
 	err = s.MatchCatRepository.ApproveMatchCat(ctx, payload.MatchId)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (s *MatchCatServiceImpl) RejectMatchCat(ctx context.Context, userId string, payload *matchcatentity.RejectMatchCatRequest) error {
+	isMatchIdExists, err := s.MatchCatRepository.VerifyMatchId(ctx, payload.MatchId)
+	if err != nil {
+		return err
+	}
+	if !isMatchIdExists {
+		return matchcaterror.ErrMatchIdNotFound
+	}
+
+	isMatchIdValid, err := s.MatchCatRepository.VerifyMatchIdValidity(ctx, payload.MatchId)
+	if err != nil {
+		return err
+	}
+	if !isMatchIdValid {
+		return matchcaterror.ErrMatchIdIsNoLongerValid
+	}
+
+	isRequestIssuer, err := s.MatchCatRepository.VerifyRequestIssuer(ctx, payload.MatchId, userId)
+	if err != nil {
+		return err
+	}
+	if isRequestIssuer {
+		return matchcaterror.ErrUnauthorizedDecision
+	}
+
+	err = s.MatchCatRepository.RejectMatchCat(ctx, payload.MatchId)
 	if err != nil {
 		return err
 	}
