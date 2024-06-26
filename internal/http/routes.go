@@ -55,6 +55,7 @@ func (s *Server) RegisterRoutes() http.Handler {
 			r.Route("/match", func(r chi.Router) {
 				r.Post("/", matchCatController.HandleCreateMatchCat)
 				r.Get("/", matchCatController.HandleGetMatchCats)
+				r.Post("/approve", matchCatController.HandleApproveMatchCat)
 			})
 		})
 	})

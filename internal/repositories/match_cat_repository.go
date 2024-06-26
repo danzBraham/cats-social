@@ -12,11 +12,14 @@ import (
 )
 
 type MatchCatRepository interface {
+	VerifyMatchId(ctx context.Context, matchId string) (bool, error)
+	VerifyMatchIdValidity(ctx context.Context, matchId string) (bool, error)
 	VerifyBothCatsGender(ctx context.Context, matchCatId, userCatId string) (bool, error)
 	VerifyBothCatsNotMatched(ctx context.Context, matchCatId, userCatId string) error
 	VerifyBothCatsHaveTheSameOwner(ctx context.Context, matchCatId, userCatId string) (bool, error)
 	CreateMatchCat(ctx context.Context, matchCat *matchcatentity.MatchCat) error
 	GetMatchCats(ctx context.Context, issuerId string) ([]*matchcatentity.MatchCat, error)
+	ApproveMatchCat(ctx context.Context, matchId string) error
 }
 
 type MatchCatRepositoryImpl struct {
@@ -25,6 +28,42 @@ type MatchCatRepositoryImpl struct {
 
 func NewMatchCatRepository(db *pgxpool.Pool) MatchCatRepository {
 	return &MatchCatRepositoryImpl{DB: db}
+}
+
+func (r *MatchCatRepositoryImpl) VerifyMatchId(ctx context.Context, matchId string) (bool, error) {
+	query := `
+		SELECT 1
+		FROM match_cats
+		WHERE id = $1
+	`
+	var exists int
+	err := r.DB.QueryRow(ctx, query, matchId).Scan(&exists)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return false, nil
+	}
+	if err != nil {
+		return false, err
+	}
+	return true, nil
+}
+
+func (r *MatchCatRepositoryImpl) VerifyMatchIdValidity(ctx context.Context, matchId string) (bool, error) {
+	query := `
+		SELECT 1
+		FROM match_cats
+		WHERE id = $1
+			AND status = 'pending'
+			AND is_deleted = false
+	`
+	var exists int
+	err := r.DB.QueryRow(ctx, query, matchId).Scan(&exists)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return false, nil
+	}
+	if err != nil {
+		return false, err
+	}
+	return true, nil
 }
 
 func (r *MatchCatRepositoryImpl) VerifyBothCatsGender(ctx context.Context, matchCatId, userCatId string) (bool, error) {
@@ -137,4 +176,55 @@ func (r *MatchCatRepositoryImpl) GetMatchCats(ctx context.Context, issuerId stri
 	}
 
 	return matchCats, nil
+}
+
+func (r *MatchCatRepositoryImpl) ApproveMatchCat(ctx context.Context, matchId string) error {
+	tx, err := r.DB.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback(ctx)
+
+	// approve the match cat request
+	approveQuery := `
+		UPDATE match_cats
+		SET status = 'approved'
+		WHERE id = $1
+		RETURNING match_cat_id, user_cat_id
+	`
+	var matchCatId, userCatId string
+	err = tx.QueryRow(ctx, approveQuery, matchId).Scan(&matchCatId, &userCatId)
+	if err != nil {
+		return err
+	}
+
+	// update has_matched column for both cats
+	updateCatsQuery := `
+		UPDATE cats
+		SET has_matched = true
+		WHERE id IN ($1, $2)
+	`
+	_, err = tx.Exec(ctx, updateCatsQuery, matchCatId, userCatId)
+	if err != nil {
+		return err
+	}
+
+	// remove other match requests for the involved cats
+	removeOtherMatchRequestQuery := `
+		UPDATE match_cats
+		SET is_deleted = true
+		WHERE (match_cat_id = $1 OR user_cat_id = $1 OR match_cat_id = $2 OR user_cat_id = $2)
+			AND status != 'approved'
+	`
+	_, err = tx.Exec(ctx, removeOtherMatchRequestQuery, matchCatId, userCatId)
+	if err != nil {
+		return err
+	}
+
+	err = tx.Commit(ctx)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }

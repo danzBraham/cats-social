@@ -6,6 +6,8 @@ import (
 )
 
 var (
+	ErrMatchIdNotFound             = errors.New("match id not found")
+	ErrMatchIdIsNoLongerValid      = errors.New("match id is no longer valid")
 	ErrMatchCatIdNotFound          = errors.New("match cat id not found")
 	ErrUserCatIdNotFound           = errors.New("user cat id not found")
 	ErrUserCatIdNotBelongToTheUser = errors.New("user cat id not belong to the user")
@@ -15,6 +17,7 @@ var (
 )
 
 var MatchCatErrorMap = map[error]int{
+	ErrMatchIdNotFound:             http.StatusNotFound,
 	ErrMatchCatIdNotFound:          http.StatusNotFound,
 	ErrUserCatIdNotFound:           http.StatusNotFound,
 	ErrUserCatIdNotBelongToTheUser: http.StatusNotFound,

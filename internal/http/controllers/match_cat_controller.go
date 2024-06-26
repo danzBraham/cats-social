@@ -15,6 +15,7 @@ import (
 type MatchCatController interface {
 	HandleCreateMatchCat(w http.ResponseWriter, r *http.Request)
 	HandleGetMatchCats(w http.ResponseWriter, r *http.Request)
+	HandleApproveMatchCat(w http.ResponseWriter, r *http.Request)
 }
 
 type MatchCatControllerImpl struct {
@@ -67,5 +68,28 @@ func (c *MatchCatControllerImpl) HandleGetMatchCats(w http.ResponseWriter, r *ht
 	}
 
 	httphelper.SuccessResponse(w, http.StatusOK, "successfully get match requests", matchCatResponses)
+}
 
+func (c *MatchCatControllerImpl) HandleApproveMatchCat(w http.ResponseWriter, r *http.Request) {
+	payload := &matchcatentity.ApproveMatchCatRequest{}
+	err := httphelper.DecodeAndValidate(w, r, payload)
+	if err != nil {
+		return
+	}
+
+	err = c.MatchCatService.ApproveMatchCat(r.Context(), payload)
+	if errors.Is(err, matchcaterror.ErrMatchIdNotFound) {
+		httphelper.ErrorResponse(w, http.StatusNotFound, err)
+		return
+	}
+	if errors.Is(err, matchcaterror.ErrMatchIdIsNoLongerValid) {
+		httphelper.ErrorResponse(w, http.StatusBadRequest, err)
+		return
+	}
+	if err != nil {
+		httphelper.ErrorResponse(w, http.StatusInternalServerError, err)
+		return
+	}
+
+	httphelper.SuccessResponse(w, http.StatusOK, "successfully matches the cat match request", nil)
 }

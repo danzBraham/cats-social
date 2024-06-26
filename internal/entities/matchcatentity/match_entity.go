@@ -42,3 +42,7 @@ type GetMatchCatResponse struct {
 	Message        string                   `json:"message"`
 	CreatedAt      string                   `json:"createdAt"`
 }
+
+type ApproveMatchCatRequest struct {
+	MatchId string `json:"matchId" validate:"required,len=26"`
+}
