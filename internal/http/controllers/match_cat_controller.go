@@ -72,19 +72,29 @@ func (c *MatchCatControllerImpl) HandleGetMatchCats(w http.ResponseWriter, r *ht
 }
 
 func (c *MatchCatControllerImpl) HandleApproveMatchCat(w http.ResponseWriter, r *http.Request) {
+	userId, ok := r.Context().Value(middlewares.ContextUserIdKey).(string)
+	if !ok {
+		httphelper.ErrorResponse(w, http.StatusUnauthorized, autherror.ErrUserIdNotFoundInTheContext)
+		return
+	}
+
 	payload := &matchcatentity.ApproveMatchCatRequest{}
 	err := httphelper.DecodeAndValidate(w, r, payload)
 	if err != nil {
 		return
 	}
 
-	err = c.MatchCatService.ApproveMatchCat(r.Context(), payload)
+	err = c.MatchCatService.ApproveMatchCat(r.Context(), userId, payload)
 	if errors.Is(err, matchcaterror.ErrMatchIdNotFound) {
 		httphelper.ErrorResponse(w, http.StatusNotFound, err)
 		return
 	}
 	if errors.Is(err, matchcaterror.ErrMatchIdIsNoLongerValid) {
 		httphelper.ErrorResponse(w, http.StatusBadRequest, err)
+		return
+	}
+	if errors.Is(err, matchcaterror.ErrUnauthorizedDecision) {
+		httphelper.ErrorResponse(w, http.StatusForbidden, err)
 		return
 	}
 	if err != nil {
