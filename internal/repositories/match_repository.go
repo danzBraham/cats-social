@@ -22,6 +22,7 @@ type MatchRepository interface {
 	GetMatches(ctx context.Context, userId string) ([]*matchentity.Match, error)
 	ApproveMatch(ctx context.Context, matchId string) error
 	RejectMatch(ctx context.Context, matchId string) error
+	DeleteMatch(ctx context.Context, matchId string) error
 }
 
 type MatchRepositoryImpl struct {
@@ -40,6 +41,7 @@ func (r *MatchRepositoryImpl) VerifyMatchId(ctx context.Context, matchId string)
 			match_requests
 		WHERE 
 			id = $1
+			AND is_deleted = false
 	`
 	var exists int
 	err := r.DB.QueryRow(ctx, query, matchId).Scan(&exists)
@@ -283,6 +285,22 @@ func (r *MatchRepositoryImpl) RejectMatch(ctx context.Context, matchId string) e
 		SET 
 			status = 'rejected'
 		WHERE 
+			id = $1
+	`
+	_, err := r.DB.Exec(ctx, query, matchId)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (r *MatchRepositoryImpl) DeleteMatch(ctx context.Context, matchId string) error {
+	query := `
+		UPDATE
+			match_requests
+		SET
+			is_deleted = true
+		WHERE
 			id = $1
 	`
 	_, err := r.DB.Exec(ctx, query, matchId)

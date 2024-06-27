@@ -10,6 +10,7 @@ import (
 	"github.com/danzBraham/cats-social/internal/helpers/httphelper"
 	"github.com/danzBraham/cats-social/internal/http/middlewares"
 	"github.com/danzBraham/cats-social/internal/services"
+	"github.com/go-chi/chi/v5"
 )
 
 type MatchController interface {
@@ -17,6 +18,7 @@ type MatchController interface {
 	HandleGetMatches(w http.ResponseWriter, r *http.Request)
 	HandleApproveMatch(w http.ResponseWriter, r *http.Request)
 	HandleRejectMatch(w http.ResponseWriter, r *http.Request)
+	HandleDeleteMatch(w http.ResponseWriter, r *http.Request)
 }
 
 type MatchControllerImpl struct {
@@ -155,4 +157,33 @@ func (c *MatchControllerImpl) HandleRejectMatch(w http.ResponseWriter, r *http.R
 	}
 
 	httphelper.SuccessResponse(w, http.StatusOK, "successfully reject the cat match request", nil)
+}
+
+func (c *MatchControllerImpl) HandleDeleteMatch(w http.ResponseWriter, r *http.Request) {
+	userId, ok := r.Context().Value(middlewares.ContextUserIdKey).(string)
+	if !ok {
+		httphelper.ErrorResponse(w, http.StatusUnauthorized, autherror.ErrUserIdNotFoundInTheContext)
+		return
+	}
+
+	matchId := chi.URLParam(r, "id")
+	err := c.MatchService.DeleteMatch(r.Context(), userId, matchId)
+	if errors.Is(err, matcherror.ErrMatchIdNotFound) {
+		httphelper.ErrorResponse(w, http.StatusNotFound, err)
+		return
+	}
+	if errors.Is(err, matcherror.ErrNotIssuer) {
+		httphelper.ErrorResponse(w, http.StatusForbidden, err)
+		return
+	}
+	if errors.Is(err, matcherror.ErrMatchIdIsNoLongerValid) {
+		httphelper.ErrorResponse(w, http.StatusBadRequest, err)
+		return
+	}
+	if err != nil {
+		httphelper.ErrorResponse(w, http.StatusInternalServerError, err)
+		return
+	}
+
+	httphelper.SuccessResponse(w, http.StatusOK, "successfully remove a cat match request", nil)
 }

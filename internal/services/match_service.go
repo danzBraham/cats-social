@@ -15,6 +15,7 @@ type MatchService interface {
 	GetMatches(ctx context.Context, userId string) ([]*matchentity.GetMatchResponse, error)
 	ApproveMatch(ctx context.Context, userId string, payload *matchentity.ApproveMatchRequest) error
 	RejectMatch(ctx context.Context, userId string, payload *matchentity.RejectMatchRequest) error
+	DeleteMatch(ctx context.Context, userId, matchId string) error
 }
 
 type MatchServiceImpl struct {
@@ -215,6 +216,39 @@ func (s *MatchServiceImpl) RejectMatch(ctx context.Context, userId string, paylo
 	}
 
 	err = s.MatchRepository.RejectMatch(ctx, payload.MatchId)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (s *MatchServiceImpl) DeleteMatch(ctx context.Context, userId, matchId string) error {
+	isMatchIssuer, err := s.MatchRepository.VerifyMatchIssuer(ctx, matchId, userId)
+	if err != nil {
+		return err
+	}
+	if !isMatchIssuer {
+		return matcherror.ErrNotIssuer
+	}
+
+	isMatchIdExists, err := s.MatchRepository.VerifyMatchId(ctx, matchId)
+	if err != nil {
+		return err
+	}
+	if !isMatchIdExists {
+		return matcherror.ErrMatchIdNotFound
+	}
+
+	isMatchIdValid, err := s.MatchRepository.VerifyMatchIdValidity(ctx, matchId)
+	if err != nil {
+		return err
+	}
+	if !isMatchIdValid {
+		return matcherror.ErrMatchIdIsNoLongerValid
+	}
+
+	err = s.MatchRepository.DeleteMatch(ctx, matchId)
 	if err != nil {
 		return err
 	}
