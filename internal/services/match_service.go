@@ -60,7 +60,7 @@ func (s *MatchServiceImpl) CreateMatch(ctx context.Context, userId string, paylo
 		return matcherror.ErrUserCatIdNotBelongToTheUser
 	}
 
-	isBothCatsHaveSameGender, err := s.MatchRepository.VerifyBothCatsGender(ctx, payload.MatchCatId, payload.UserCatId)
+	isBothCatsHaveSameGender, err := s.MatchRepository.VerifyGenderOfBothCats(ctx, payload.MatchCatId, payload.UserCatId)
 	if err != nil {
 		return err
 	}
@@ -68,17 +68,25 @@ func (s *MatchServiceImpl) CreateMatch(ctx context.Context, userId string, paylo
 		return matcherror.ErrBothCatsHaveSameGender
 	}
 
-	err = s.MatchRepository.VerifyBothCatsNotMatched(ctx, payload.MatchCatId, payload.UserCatId)
+	err = s.MatchRepository.VerifyCatsNotMatched(ctx, payload.MatchCatId, payload.UserCatId)
 	if err != nil {
 		return err
 	}
 
-	isBothCatsHaveTheSameOwner, err := s.MatchRepository.VerifyBothCatsHaveTheSameOwner(ctx, payload.MatchCatId, payload.UserCatId)
+	isBothCatsHaveSameOwner, err := s.MatchRepository.VerifyOwnerOfBothCats(ctx, payload.MatchCatId, payload.UserCatId)
 	if err != nil {
 		return err
 	}
-	if isBothCatsHaveTheSameOwner {
+	if isBothCatsHaveSameOwner {
 		return matcherror.ErrBothCatsHaveSameOwner
+	}
+
+	isMatchRequestExists, err := s.MatchRepository.VerifyMatchRequestExistence(ctx, payload.MatchCatId, payload.UserCatId)
+	if err != nil {
+		return err
+	}
+	if isMatchRequestExists {
+		return matcherror.ErrDuplicateMatchRequest
 	}
 
 	matchCat := &matchentity.Match{

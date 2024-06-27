@@ -15,9 +15,10 @@ type MatchRepository interface {
 	VerifyMatchId(ctx context.Context, matchId string) (bool, error)
 	VerifyMatchIdValidity(ctx context.Context, matchId string) (bool, error)
 	VerifyMatchIssuer(ctx context.Context, matchId, userId string) (bool, error)
-	VerifyBothCatsGender(ctx context.Context, matchCatId, userCatId string) (bool, error)
-	VerifyBothCatsNotMatched(ctx context.Context, matchCatId, userCatId string) error
-	VerifyBothCatsHaveTheSameOwner(ctx context.Context, matchCatId, userCatId string) (bool, error)
+	VerifyGenderOfBothCats(ctx context.Context, matchCatId, userCatId string) (bool, error)
+	VerifyCatsNotMatched(ctx context.Context, matchCatId, userCatId string) error
+	VerifyOwnerOfBothCats(ctx context.Context, matchCatId, userCatId string) (bool, error)
+	VerifyMatchRequestExistence(ctx context.Context, matchCatId, userCatId string) (bool, error)
 	CreateMatch(ctx context.Context, matchCat *matchentity.Match) error
 	GetMatches(ctx context.Context, userId string) ([]*matchentity.GetMatchResponse, error)
 	ApproveMatch(ctx context.Context, matchId string) error
@@ -35,11 +36,11 @@ func NewMatchRepository(db *pgxpool.Pool) MatchRepository {
 
 func (r *MatchRepositoryImpl) VerifyMatchId(ctx context.Context, matchId string) (bool, error) {
 	query := `
-		SELECT 
+		SELECT
 			1
-		FROM 
+		FROM
 			match_requests
-		WHERE 
+		WHERE
 			id = $1
 			AND is_deleted = false
 	`
@@ -99,11 +100,15 @@ func (r *MatchRepositoryImpl) VerifyMatchIssuer(ctx context.Context, matchId, us
 	return true, nil
 }
 
-func (r *MatchRepositoryImpl) VerifyBothCatsGender(ctx context.Context, matchCatId, userCatId string) (bool, error) {
+func (r *MatchRepositoryImpl) VerifyGenderOfBothCats(ctx context.Context, matchCatId, userCatId string) (bool, error) {
 	query := `
-		SELECT c1.sex = c2.sex
-		FROM cats c1, cats c2
-		WHERE c1.id = $1 AND c2.id = $2
+		SELECT
+			c1.sex = c2.sex
+		FROM
+			cats c1, cats c2
+		WHERE
+			c1.id = $1
+			AND c2.id = $2
 	`
 	var result bool
 	err := r.DB.QueryRow(ctx, query, matchCatId, userCatId).Scan(&result)
@@ -116,11 +121,15 @@ func (r *MatchRepositoryImpl) VerifyBothCatsGender(ctx context.Context, matchCat
 	return result, nil
 }
 
-func (r *MatchRepositoryImpl) VerifyBothCatsNotMatched(ctx context.Context, matchCatId, userCatId string) error {
+func (r *MatchRepositoryImpl) VerifyCatsNotMatched(ctx context.Context, matchCatId, userCatId string) error {
 	query := `
-		SELECT c1.has_matched, c2.has_matched
-		FROM cats c1, cats c2
-		WHERE c1.id = $1 AND c2.id = $2
+		SELECT
+			c1.has_matched, c2.has_matched
+		FROM
+			cats c1, cats c2
+		WHERE
+			c1.id = $1
+			AND c2.id = $2
 	`
 	var hasMatched1, hasMatched2 bool
 	err := r.DB.QueryRow(ctx, query, matchCatId, userCatId).Scan(&hasMatched1, &hasMatched2)
@@ -136,11 +145,15 @@ func (r *MatchRepositoryImpl) VerifyBothCatsNotMatched(ctx context.Context, matc
 	return nil
 }
 
-func (r *MatchRepositoryImpl) VerifyBothCatsHaveTheSameOwner(ctx context.Context, matchCatId, userCatId string) (bool, error) {
+func (r *MatchRepositoryImpl) VerifyOwnerOfBothCats(ctx context.Context, matchCatId, userCatId string) (bool, error) {
 	query := `
-		SELECT c1.owner_id = c2.owner_id
-		FROM cats c1, cats c2
-		WHERE c1.id = $1 AND c2.id = $2
+		SELECT 
+			c1.owner_id = c2.owner_id
+		FROM
+			cats c1, cats c2
+		WHERE
+			c1.id = $1
+			AND c2.id = $2
 	`
 	var result bool
 	err := r.DB.QueryRow(ctx, query, matchCatId, userCatId).Scan(&result)
@@ -153,10 +166,35 @@ func (r *MatchRepositoryImpl) VerifyBothCatsHaveTheSameOwner(ctx context.Context
 	return result, nil
 }
 
+func (r *MatchRepositoryImpl) VerifyMatchRequestExistence(ctx context.Context, matchCatId, userCatId string) (bool, error) {
+	query := `
+		SELECT
+			1
+		FROM
+			match_requests
+		WHERE
+			(match_cat_id = $1 OR user_cat_id = $1)
+			AND (user_cat_id = $2 OR match_cat_id = $2)
+			AND status = 'pending'
+			AND is_deleted = false
+	`
+	var exists int
+	err := r.DB.QueryRow(ctx, query, matchCatId, userCatId).Scan(&exists)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return false, nil
+	}
+	if err != nil {
+		return false, err
+	}
+	return true, nil
+}
+
 func (r *MatchRepositoryImpl) CreateMatch(ctx context.Context, matchCat *matchentity.Match) error {
 	query := `
-		INSERT INTO match_requests (id, match_cat_id, user_cat_id, message)
-		VALUES ($1, $2, $3, $4)
+		INSERT INTO
+			match_requests (id, match_cat_id, user_cat_id, message)
+		VALUES
+			($1, $2, $3, $4)
 	`
 	_, err := r.DB.Exec(ctx, query,
 		&matchCat.Id,
@@ -257,8 +295,7 @@ func (r *MatchRepositoryImpl) GetMatches(ctx context.Context, userId string) ([]
 		matches = append(matches, &match)
 	}
 
-	err = rows.Err()
-	if err != nil {
+	if err = rows.Err(); err != nil {
 		return nil, err
 	}
 
@@ -291,11 +328,11 @@ func (r *MatchRepositoryImpl) ApproveMatch(ctx context.Context, matchId string) 
 
 	// update has_matched column for both cats
 	updateCatsQuery := `
-		UPDATE 
+		UPDATE
 			cats
-		SET 
+		SET
 			has_matched = true
-		WHERE 
+		WHERE
 			id IN ($1, $2)
 	`
 	_, err = tx.Exec(ctx, updateCatsQuery, matchCatId, userCatId)
@@ -305,11 +342,11 @@ func (r *MatchRepositoryImpl) ApproveMatch(ctx context.Context, matchId string) 
 
 	// remove other match requests for the involved cats
 	removeOtherMatchRequestQuery := `
-		UPDATE 
+		UPDATE
 			match_requests
-		SET 
+		SET
 			is_deleted = true
-		WHERE 
+		WHERE
 			(match_cat_id = $1 OR user_cat_id = $1 OR match_cat_id = $2 OR user_cat_id = $2)
 			AND status != 'approved'
 	`
@@ -318,8 +355,7 @@ func (r *MatchRepositoryImpl) ApproveMatch(ctx context.Context, matchId string) 
 		return err
 	}
 
-	err = tx.Commit(ctx)
-	if err != nil {
+	if err = tx.Commit(ctx); err != nil {
 		return err
 	}
 

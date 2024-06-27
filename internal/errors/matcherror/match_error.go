@@ -15,4 +15,5 @@ var (
 	ErrBothCatsHaveSameGender      = errors.New("both cats have same gender")
 	ErrBothCatsHaveAlreadyMatched  = errors.New("both cats have already matched")
 	ErrBothCatsHaveSameOwner       = errors.New("both cats have same owner")
+	ErrDuplicateMatchRequest       = errors.New("match request already exists for these two cats")
 )
