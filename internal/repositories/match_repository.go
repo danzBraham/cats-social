@@ -5,34 +5,34 @@ import (
 	"errors"
 	"time"
 
-	"github.com/danzBraham/cats-social/internal/entities/matchcatentity"
-	"github.com/danzBraham/cats-social/internal/errors/matchcaterror"
+	"github.com/danzBraham/cats-social/internal/entities/matchentity"
+	"github.com/danzBraham/cats-social/internal/errors/matcherror"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-type MatchCatRepository interface {
+type MatchRepository interface {
 	VerifyMatchId(ctx context.Context, matchId string) (bool, error)
 	VerifyMatchIdValidity(ctx context.Context, matchId string) (bool, error)
 	VerifyRequestIssuer(ctx context.Context, matchId, issuerId string) (bool, error)
 	VerifyBothCatsGender(ctx context.Context, matchCatId, userCatId string) (bool, error)
 	VerifyBothCatsNotMatched(ctx context.Context, matchCatId, userCatId string) error
 	VerifyBothCatsHaveTheSameOwner(ctx context.Context, matchCatId, userCatId string) (bool, error)
-	CreateMatchCat(ctx context.Context, matchCat *matchcatentity.MatchCat) error
-	GetMatchCats(ctx context.Context, issuerId string) ([]*matchcatentity.MatchCat, error)
-	ApproveMatchCat(ctx context.Context, matchId string) error
-	RejectMatchCat(ctx context.Context, matchId string) error
+	CreateMatch(ctx context.Context, matchCat *matchentity.MatchCat) error
+	GetMatches(ctx context.Context, issuerId string) ([]*matchentity.MatchCat, error)
+	ApproveMatch(ctx context.Context, matchId string) error
+	RejectMatch(ctx context.Context, matchId string) error
 }
 
-type MatchCatRepositoryImpl struct {
+type MatchRepositoryImpl struct {
 	DB *pgxpool.Pool
 }
 
-func NewMatchCatRepository(db *pgxpool.Pool) MatchCatRepository {
-	return &MatchCatRepositoryImpl{DB: db}
+func NewMatchRepository(db *pgxpool.Pool) MatchRepository {
+	return &MatchRepositoryImpl{DB: db}
 }
 
-func (r *MatchCatRepositoryImpl) VerifyMatchId(ctx context.Context, matchId string) (bool, error) {
+func (r *MatchRepositoryImpl) VerifyMatchId(ctx context.Context, matchId string) (bool, error) {
 	query := `
 		SELECT 1
 		FROM match_cats
@@ -49,7 +49,7 @@ func (r *MatchCatRepositoryImpl) VerifyMatchId(ctx context.Context, matchId stri
 	return true, nil
 }
 
-func (r *MatchCatRepositoryImpl) VerifyMatchIdValidity(ctx context.Context, matchId string) (bool, error) {
+func (r *MatchRepositoryImpl) VerifyMatchIdValidity(ctx context.Context, matchId string) (bool, error) {
 	query := `
 		SELECT 1
 		FROM match_cats
@@ -68,7 +68,7 @@ func (r *MatchCatRepositoryImpl) VerifyMatchIdValidity(ctx context.Context, matc
 	return true, nil
 }
 
-func (r *MatchCatRepositoryImpl) VerifyRequestIssuer(ctx context.Context, matchId, issuerId string) (bool, error) {
+func (r *MatchRepositoryImpl) VerifyRequestIssuer(ctx context.Context, matchId, issuerId string) (bool, error) {
 	query := `
 		SELECT 1
 		FROM match_cats
@@ -86,7 +86,7 @@ func (r *MatchCatRepositoryImpl) VerifyRequestIssuer(ctx context.Context, matchI
 	return true, nil
 }
 
-func (r *MatchCatRepositoryImpl) VerifyBothCatsGender(ctx context.Context, matchCatId, userCatId string) (bool, error) {
+func (r *MatchRepositoryImpl) VerifyBothCatsGender(ctx context.Context, matchCatId, userCatId string) (bool, error) {
 	query := `
 		SELECT c1.sex = c2.sex
 		FROM cats c1, cats c2
@@ -103,7 +103,7 @@ func (r *MatchCatRepositoryImpl) VerifyBothCatsGender(ctx context.Context, match
 	return result, nil
 }
 
-func (r *MatchCatRepositoryImpl) VerifyBothCatsNotMatched(ctx context.Context, matchCatId, userCatId string) error {
+func (r *MatchRepositoryImpl) VerifyBothCatsNotMatched(ctx context.Context, matchCatId, userCatId string) error {
 	query := `
 		SELECT c1.has_matched, c2.has_matched
 		FROM cats c1, cats c2
@@ -118,12 +118,12 @@ func (r *MatchCatRepositoryImpl) VerifyBothCatsNotMatched(ctx context.Context, m
 		return err
 	}
 	if hasMatched1 && hasMatched2 {
-		return matchcaterror.ErrBothCatsHaveAlreadyMatched
+		return matcherror.ErrBothCatsHaveAlreadyMatched
 	}
 	return nil
 }
 
-func (r *MatchCatRepositoryImpl) VerifyBothCatsHaveTheSameOwner(ctx context.Context, matchCatId, userCatId string) (bool, error) {
+func (r *MatchRepositoryImpl) VerifyBothCatsHaveTheSameOwner(ctx context.Context, matchCatId, userCatId string) (bool, error) {
 	query := `
 		SELECT c1.owner_id = c2.owner_id
 		FROM cats c1, cats c2
@@ -140,7 +140,7 @@ func (r *MatchCatRepositoryImpl) VerifyBothCatsHaveTheSameOwner(ctx context.Cont
 	return result, nil
 }
 
-func (r *MatchCatRepositoryImpl) CreateMatchCat(ctx context.Context, matchCat *matchcatentity.MatchCat) error {
+func (r *MatchRepositoryImpl) CreateMatch(ctx context.Context, matchCat *matchentity.MatchCat) error {
 	query := `
 		INSERT INTO match_cats (id, match_cat_id, user_cat_id, message, issued_by)
 		VALUES ($1, $2, $3, $4, $5)
@@ -158,7 +158,7 @@ func (r *MatchCatRepositoryImpl) CreateMatchCat(ctx context.Context, matchCat *m
 	return nil
 }
 
-func (r *MatchCatRepositoryImpl) GetMatchCats(ctx context.Context, issuerId string) ([]*matchcatentity.MatchCat, error) {
+func (r *MatchRepositoryImpl) GetMatches(ctx context.Context, issuerId string) ([]*matchentity.MatchCat, error) {
 	query := `
 		SELECT id, 
 					match_cat_id,
@@ -176,9 +176,9 @@ func (r *MatchCatRepositoryImpl) GetMatchCats(ctx context.Context, issuerId stri
 	}
 	defer rows.Close()
 
-	matchCats := []*matchcatentity.MatchCat{}
+	matchCats := []*matchentity.MatchCat{}
 	for rows.Next() {
-		var matchCat matchcatentity.MatchCat
+		var matchCat matchentity.MatchCat
 		var createdAt time.Time
 		err := rows.Scan(
 			&matchCat.Id,
@@ -198,7 +198,7 @@ func (r *MatchCatRepositoryImpl) GetMatchCats(ctx context.Context, issuerId stri
 	return matchCats, nil
 }
 
-func (r *MatchCatRepositoryImpl) ApproveMatchCat(ctx context.Context, matchId string) error {
+func (r *MatchRepositoryImpl) ApproveMatch(ctx context.Context, matchId string) error {
 	tx, err := r.DB.Begin(ctx)
 	if err != nil {
 		return err
@@ -249,7 +249,7 @@ func (r *MatchCatRepositoryImpl) ApproveMatchCat(ctx context.Context, matchId st
 	return nil
 }
 
-func (r *MatchCatRepositoryImpl) RejectMatchCat(ctx context.Context, matchId string) error {
+func (r *MatchRepositoryImpl) RejectMatch(ctx context.Context, matchId string) error {
 	query := `
 		UPDATE match_cats
 		SET status = 'rejected'

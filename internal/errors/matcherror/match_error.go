@@ -1,4 +1,4 @@
-package matchcaterror
+package matcherror
 
 import (
 	"errors"
@@ -17,7 +17,7 @@ var (
 	ErrBothCatsHaveTheSameOwner    = errors.New("both cats have the same owner")
 )
 
-var MatchCatErrorMap = map[error]int{
+var MatchErrorMap = map[error]int{
 	ErrMatchIdNotFound:             http.StatusNotFound,
 	ErrMatchCatIdNotFound:          http.StatusNotFound,
 	ErrUserCatIdNotFound:           http.StatusNotFound,

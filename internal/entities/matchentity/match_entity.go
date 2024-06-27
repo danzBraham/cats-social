@@ -1,4 +1,4 @@
-package matchcatentity
+package matchentity
 
 import "github.com/danzBraham/cats-social/internal/entities/catentity"
 
@@ -22,7 +22,7 @@ type MatchCat struct {
 	UpdatedAt  string
 }
 
-type CreateMatchCatRequest struct {
+type CreateMatchRequest struct {
 	MatchCatId string `json:"matchCatId" validate:"required,len=26"`
 	UserCatId  string `json:"userCatId" validate:"required,len=26"`
 	Message    string `json:"message" validate:"required,min=5,max=120"`
@@ -34,7 +34,7 @@ type IssuerDetail struct {
 	CreatedAt string `json:"createdAt"`
 }
 
-type GetMatchCatResponse struct {
+type GetMatchResponse struct {
 	Id             string                   `json:"id"`
 	IssuedBy       IssuerDetail             `json:"issuedBy"`
 	MatchCatDetail catentity.GetCatResponse `json:"matchCatDetail"`
@@ -43,10 +43,10 @@ type GetMatchCatResponse struct {
 	CreatedAt      string                   `json:"createdAt"`
 }
 
-type ApproveMatchCatRequest struct {
+type ApproveMatchRequest struct {
 	MatchId string `json:"matchId" validate:"required,len=26"`
 }
 
-type RejectMatchCatRequest struct {
+type RejectMatchRequest struct {
 	MatchId string `json:"matchId" validate:"required,len=26"`
 }
