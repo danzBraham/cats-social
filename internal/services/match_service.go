@@ -81,7 +81,7 @@ func (s *MatchServiceImpl) CreateMatch(ctx context.Context, userId string, paylo
 		return matcherror.ErrBothCatsHaveSameOwner
 	}
 
-	matchCat := &matchentity.MatchCat{
+	matchCat := &matchentity.Match{
 		Id:         ulid.Make().String(),
 		MatchCatId: payload.MatchCatId,
 		UserCatId:  payload.UserCatId,
@@ -97,30 +97,30 @@ func (s *MatchServiceImpl) CreateMatch(ctx context.Context, userId string, paylo
 }
 
 func (s *MatchServiceImpl) GetMatches(ctx context.Context, userId string) ([]*matchentity.GetMatchResponse, error) {
-	matchCats, err := s.MatchRepository.GetMatches(ctx, userId)
+	matches, err := s.MatchRepository.GetMatches(ctx, userId)
 	if err != nil {
 		return nil, err
 	}
 
-	matchCatResponses := []*matchentity.GetMatchResponse{}
-	for _, matchCat := range matchCats {
-		issuerDetail, err := s.UserRepository.GetUserById(ctx, "")
+	matchResponses := []*matchentity.GetMatchResponse{}
+	for _, match := range matches {
+		matchCatDetail, err := s.CatRepository.GetCatById(ctx, match.MatchCatId)
 		if err != nil {
 			return nil, err
 		}
 
-		matchCatDetail, err := s.CatRepository.GetCatById(ctx, matchCat.MatchCatId)
+		userCatDetail, err := s.CatRepository.GetCatById(ctx, match.UserCatId)
 		if err != nil {
 			return nil, err
 		}
 
-		userCatDetail, err := s.CatRepository.GetCatById(ctx, matchCat.UserCatId)
+		issuerDetail, err := s.UserRepository.GetUserById(ctx, userCatDetail.OwnerId)
 		if err != nil {
 			return nil, err
 		}
 
-		matchCatResponses = append(matchCatResponses, &matchentity.GetMatchResponse{
-			Id: matchCat.Id,
+		matchResponses = append(matchResponses, &matchentity.GetMatchResponse{
+			Id: match.Id,
 			IssuedBy: matchentity.IssuerDetail{
 				Name:      issuerDetail.Name,
 				Email:     issuerDetail.Email,
@@ -148,12 +148,12 @@ func (s *MatchServiceImpl) GetMatches(ctx context.Context, userId string) ([]*ma
 				HasMatched:  userCatDetail.HasMatched,
 				CreatedAt:   userCatDetail.CreatedAt,
 			},
-			Message:   matchCat.Message,
-			CreatedAt: matchCat.CreatedAt,
+			Message:   match.Message,
+			CreatedAt: match.CreatedAt,
 		})
 	}
 
-	return matchCatResponses, nil
+	return matchResponses, nil
 }
 
 func (s *MatchServiceImpl) ApproveMatch(ctx context.Context, userId string, payload *matchentity.ApproveMatchRequest) error {

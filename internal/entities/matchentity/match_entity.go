@@ -10,7 +10,7 @@ const (
 	Rejected Status = "rejected"
 )
 
-type MatchCat struct {
+type Match struct {
 	Id         string
 	MatchCatId string
 	UserCatId  string

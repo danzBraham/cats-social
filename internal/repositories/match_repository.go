@@ -18,8 +18,8 @@ type MatchRepository interface {
 	VerifyBothCatsGender(ctx context.Context, matchCatId, userCatId string) (bool, error)
 	VerifyBothCatsNotMatched(ctx context.Context, matchCatId, userCatId string) error
 	VerifyBothCatsHaveTheSameOwner(ctx context.Context, matchCatId, userCatId string) (bool, error)
-	CreateMatch(ctx context.Context, matchCat *matchentity.MatchCat) error
-	GetMatches(ctx context.Context, issuerId string) ([]*matchentity.MatchCat, error)
+	CreateMatch(ctx context.Context, matchCat *matchentity.Match) error
+	GetMatches(ctx context.Context, userId string) ([]*matchentity.Match, error)
 	ApproveMatch(ctx context.Context, matchId string) error
 	RejectMatch(ctx context.Context, matchId string) error
 }
@@ -140,7 +140,7 @@ func (r *MatchRepositoryImpl) VerifyBothCatsHaveTheSameOwner(ctx context.Context
 	return result, nil
 }
 
-func (r *MatchRepositoryImpl) CreateMatch(ctx context.Context, matchCat *matchentity.MatchCat) error {
+func (r *MatchRepositoryImpl) CreateMatch(ctx context.Context, matchCat *matchentity.Match) error {
 	query := `
 		INSERT INTO match_requests (id, match_cat_id, user_cat_id, message)
 		VALUES ($1, $2, $3, $4)
@@ -157,27 +157,35 @@ func (r *MatchRepositoryImpl) CreateMatch(ctx context.Context, matchCat *matchen
 	return nil
 }
 
-func (r *MatchRepositoryImpl) GetMatches(ctx context.Context, issuerId string) ([]*matchentity.MatchCat, error) {
+func (r *MatchRepositoryImpl) GetMatches(ctx context.Context, userId string) ([]*matchentity.Match, error) {
 	query := `
-		SELECT id, 
-					match_cat_id,
-					user_cat_id,
-					message,
-					issued_by,
-					created_at
-		FROM match_cats
-		WHERE issued_by = $1
-			AND is_deleted = false
+		SELECT 
+			mr.id, 
+			mr.match_cat_id,
+			mr.user_cat_id,
+			mr.message,
+			mr.created_at
+		FROM 
+			match_requests mr
+		JOIN
+			cats mc ON mr.match_cat_id = mc.id
+		JOIN
+			cats uc ON mr.user_cat_id = uc.id
+		WHERE 
+			(mc.owner_id = $1 OR uc.owner_id = $1)
+			AND mr.is_deleted = false
+		ORDER BY
+			created_at DESC
 	`
-	rows, err := r.DB.Query(ctx, query, issuerId)
+	rows, err := r.DB.Query(ctx, query, userId)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
 
-	matchCats := []*matchentity.MatchCat{}
+	matches := []*matchentity.Match{}
 	for rows.Next() {
-		var matchCat matchentity.MatchCat
+		var matchCat matchentity.Match
 		var createdAt time.Time
 		err := rows.Scan(
 			&matchCat.Id,
@@ -190,10 +198,10 @@ func (r *MatchRepositoryImpl) GetMatches(ctx context.Context, issuerId string) (
 			return nil, err
 		}
 		matchCat.CreatedAt = createdAt.Format(time.RFC3339)
-		matchCats = append(matchCats, &matchCat)
+		matches = append(matches, &matchCat)
 	}
 
-	return matchCats, nil
+	return matches, nil
 }
 
 func (r *MatchRepositoryImpl) ApproveMatch(ctx context.Context, matchId string) error {
