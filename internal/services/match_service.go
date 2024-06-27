@@ -60,12 +60,12 @@ func (s *MatchServiceImpl) CreateMatch(ctx context.Context, userId string, paylo
 		return matcherror.ErrUserCatIdNotBelongToTheUser
 	}
 
-	isBothCatsHaveTheSameGender, err := s.MatchRepository.VerifyBothCatsGender(ctx, payload.MatchCatId, payload.UserCatId)
+	isBothCatsHaveSameGender, err := s.MatchRepository.VerifyBothCatsGender(ctx, payload.MatchCatId, payload.UserCatId)
 	if err != nil {
 		return err
 	}
-	if isBothCatsHaveTheSameGender {
-		return matcherror.ErrBothCatsHaveTheSameGender
+	if isBothCatsHaveSameGender {
+		return matcherror.ErrBothCatsHaveSameGender
 	}
 
 	err = s.MatchRepository.VerifyBothCatsNotMatched(ctx, payload.MatchCatId, payload.UserCatId)
@@ -78,7 +78,7 @@ func (s *MatchServiceImpl) CreateMatch(ctx context.Context, userId string, paylo
 		return err
 	}
 	if isBothCatsHaveTheSameOwner {
-		return matcherror.ErrBothCatsHaveTheSameOwner
+		return matcherror.ErrBothCatsHaveSameOwner
 	}
 
 	matchCat := &matchentity.MatchCat{
@@ -86,7 +86,6 @@ func (s *MatchServiceImpl) CreateMatch(ctx context.Context, userId string, paylo
 		MatchCatId: payload.MatchCatId,
 		UserCatId:  payload.UserCatId,
 		Message:    payload.Message,
-		IssuedBy:   userId,
 	}
 
 	err = s.MatchRepository.CreateMatch(ctx, matchCat)
@@ -105,7 +104,7 @@ func (s *MatchServiceImpl) GetMatches(ctx context.Context, userId string) ([]*ma
 
 	matchCatResponses := []*matchentity.GetMatchResponse{}
 	for _, matchCat := range matchCats {
-		issuerDetail, err := s.UserRepository.GetUserById(ctx, matchCat.IssuedBy)
+		issuerDetail, err := s.UserRepository.GetUserById(ctx, "")
 		if err != nil {
 			return nil, err
 		}

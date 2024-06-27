@@ -16,7 +16,6 @@ type MatchCat struct {
 	UserCatId  string
 	Message    string
 	Status     Status
-	IssuedBy   string
 	IsDeleted  bool
 	CreatedAt  string
 	UpdatedAt  string

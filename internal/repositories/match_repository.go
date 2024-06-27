@@ -142,15 +142,14 @@ func (r *MatchRepositoryImpl) VerifyBothCatsHaveTheSameOwner(ctx context.Context
 
 func (r *MatchRepositoryImpl) CreateMatch(ctx context.Context, matchCat *matchentity.MatchCat) error {
 	query := `
-		INSERT INTO match_cats (id, match_cat_id, user_cat_id, message, issued_by)
-		VALUES ($1, $2, $3, $4, $5)
+		INSERT INTO match_requests (id, match_cat_id, user_cat_id, message)
+		VALUES ($1, $2, $3, $4)
 	`
 	_, err := r.DB.Exec(ctx, query,
 		&matchCat.Id,
 		&matchCat.MatchCatId,
 		&matchCat.UserCatId,
 		&matchCat.Message,
-		&matchCat.IssuedBy,
 	)
 	if err != nil {
 		return err
@@ -185,7 +184,6 @@ func (r *MatchRepositoryImpl) GetMatches(ctx context.Context, issuerId string) (
 			&matchCat.MatchCatId,
 			&matchCat.UserCatId,
 			&matchCat.Message,
-			&matchCat.IssuedBy,
 			&createdAt,
 		)
 		if err != nil {

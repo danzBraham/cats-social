@@ -41,11 +41,29 @@ func (c *MatchControllerImpl) HandleCreateMatch(w http.ResponseWriter, r *http.R
 	}
 
 	err = c.MatchService.CreateMatch(r.Context(), userId, payload)
-	for errType, statusCode := range matcherror.MatchErrorMap {
-		if errors.Is(err, errType) {
-			httphelper.ErrorResponse(w, statusCode, err)
-			return
-		}
+	if errors.Is(err, matcherror.ErrMatchCatIdNotFound) {
+		httphelper.ErrorResponse(w, http.StatusNotFound, err)
+		return
+	}
+	if errors.Is(err, matcherror.ErrUserCatIdNotFound) {
+		httphelper.ErrorResponse(w, http.StatusNotFound, err)
+		return
+	}
+	if errors.Is(err, matcherror.ErrUserCatIdNotBelongToTheUser) {
+		httphelper.ErrorResponse(w, http.StatusNotFound, err)
+		return
+	}
+	if errors.Is(err, matcherror.ErrBothCatsHaveSameGender) {
+		httphelper.ErrorResponse(w, http.StatusBadRequest, err)
+		return
+	}
+	if errors.Is(err, matcherror.ErrBothCatsHaveSameOwner) {
+		httphelper.ErrorResponse(w, http.StatusBadRequest, err)
+		return
+	}
+	if errors.Is(err, matcherror.ErrBothCatsHaveAlreadyMatched) {
+		httphelper.ErrorResponse(w, http.StatusBadRequest, err)
+		return
 	}
 	if err != nil {
 		httphelper.ErrorResponse(w, http.StatusInternalServerError, err)

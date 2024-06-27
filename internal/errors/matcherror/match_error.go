@@ -2,7 +2,6 @@ package matcherror
 
 import (
 	"errors"
-	"net/http"
 )
 
 var (
@@ -12,17 +11,7 @@ var (
 	ErrMatchCatIdNotFound          = errors.New("match cat id not found")
 	ErrUserCatIdNotFound           = errors.New("user cat id not found")
 	ErrUserCatIdNotBelongToTheUser = errors.New("user cat id not belong to the user")
-	ErrBothCatsHaveTheSameGender   = errors.New("both cats have the same gender")
+	ErrBothCatsHaveSameGender      = errors.New("both cats have same gender")
 	ErrBothCatsHaveAlreadyMatched  = errors.New("both cats have already matched")
-	ErrBothCatsHaveTheSameOwner    = errors.New("both cats have the same owner")
+	ErrBothCatsHaveSameOwner       = errors.New("both cats have same owner")
 )
-
-var MatchErrorMap = map[error]int{
-	ErrMatchIdNotFound:             http.StatusNotFound,
-	ErrMatchCatIdNotFound:          http.StatusNotFound,
-	ErrUserCatIdNotFound:           http.StatusNotFound,
-	ErrUserCatIdNotBelongToTheUser: http.StatusNotFound,
-	ErrBothCatsHaveTheSameGender:   http.StatusBadRequest,
-	ErrBothCatsHaveAlreadyMatched:  http.StatusBadRequest,
-	ErrBothCatsHaveTheSameOwner:    http.StatusBadRequest,
-}
