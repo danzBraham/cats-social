@@ -14,7 +14,7 @@ import (
 type MatchRepository interface {
 	VerifyMatchId(ctx context.Context, matchId string) (bool, error)
 	VerifyMatchIdValidity(ctx context.Context, matchId string) (bool, error)
-	VerifyRequestIssuer(ctx context.Context, matchId, issuerId string) (bool, error)
+	VerifyMatchIssuer(ctx context.Context, matchId, userId string) (bool, error)
 	VerifyBothCatsGender(ctx context.Context, matchCatId, userCatId string) (bool, error)
 	VerifyBothCatsNotMatched(ctx context.Context, matchCatId, userCatId string) error
 	VerifyBothCatsHaveTheSameOwner(ctx context.Context, matchCatId, userCatId string) (bool, error)
@@ -34,9 +34,12 @@ func NewMatchRepository(db *pgxpool.Pool) MatchRepository {
 
 func (r *MatchRepositoryImpl) VerifyMatchId(ctx context.Context, matchId string) (bool, error) {
 	query := `
-		SELECT 1
-		FROM match_cats
-		WHERE id = $1
+		SELECT 
+			1
+		FROM 
+			match_requests
+		WHERE 
+			id = $1
 	`
 	var exists int
 	err := r.DB.QueryRow(ctx, query, matchId).Scan(&exists)
@@ -51,9 +54,12 @@ func (r *MatchRepositoryImpl) VerifyMatchId(ctx context.Context, matchId string)
 
 func (r *MatchRepositoryImpl) VerifyMatchIdValidity(ctx context.Context, matchId string) (bool, error) {
 	query := `
-		SELECT 1
-		FROM match_cats
-		WHERE id = $1
+		SELECT 
+			1
+		FROM 
+			match_requests
+		WHERE 
+			id = $1
 			AND status = 'pending'
 			AND is_deleted = false
 	`
@@ -68,15 +74,20 @@ func (r *MatchRepositoryImpl) VerifyMatchIdValidity(ctx context.Context, matchId
 	return true, nil
 }
 
-func (r *MatchRepositoryImpl) VerifyRequestIssuer(ctx context.Context, matchId, issuerId string) (bool, error) {
+func (r *MatchRepositoryImpl) VerifyMatchIssuer(ctx context.Context, matchId, userId string) (bool, error) {
 	query := `
-		SELECT 1
-		FROM match_cats
-		WHERE id = $1
-			AND issued_by = $2
+		SELECT 
+			1
+		FROM 
+			match_requests mr
+		JOIN 
+			cats c ON mr.user_cat_id = c.id
+		WHERE 
+			mr.id = $1
+			AND c.owner_id = $2
 	`
 	var exists int
-	err := r.DB.QueryRow(ctx, query, matchId, issuerId).Scan(&exists)
+	err := r.DB.QueryRow(ctx, query, matchId, userId).Scan(&exists)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return false, nil
 	}
@@ -211,12 +222,16 @@ func (r *MatchRepositoryImpl) ApproveMatch(ctx context.Context, matchId string) 
 	}
 	defer tx.Rollback(ctx)
 
-	// approve the match cat request
+	// approve the match request
 	approveQuery := `
-		UPDATE match_cats
-		SET status = 'approved'
-		WHERE id = $1
-		RETURNING match_cat_id, user_cat_id
+		UPDATE
+			match_requests
+		SET
+			status = 'approved'
+		WHERE 
+			id = $1
+		RETURNING 
+			match_cat_id, user_cat_id
 	`
 	var matchCatId, userCatId string
 	err = tx.QueryRow(ctx, approveQuery, matchId).Scan(&matchCatId, &userCatId)
@@ -226,9 +241,12 @@ func (r *MatchRepositoryImpl) ApproveMatch(ctx context.Context, matchId string) 
 
 	// update has_matched column for both cats
 	updateCatsQuery := `
-		UPDATE cats
-		SET has_matched = true
-		WHERE id IN ($1, $2)
+		UPDATE 
+			cats
+		SET 
+			has_matched = true
+		WHERE 
+			id IN ($1, $2)
 	`
 	_, err = tx.Exec(ctx, updateCatsQuery, matchCatId, userCatId)
 	if err != nil {
@@ -237,9 +255,12 @@ func (r *MatchRepositoryImpl) ApproveMatch(ctx context.Context, matchId string) 
 
 	// remove other match requests for the involved cats
 	removeOtherMatchRequestQuery := `
-		UPDATE match_cats
-		SET is_deleted = true
-		WHERE (match_cat_id = $1 OR user_cat_id = $1 OR match_cat_id = $2 OR user_cat_id = $2)
+		UPDATE 
+			match_requests
+		SET 
+			is_deleted = true
+		WHERE 
+			(match_cat_id = $1 OR user_cat_id = $1 OR match_cat_id = $2 OR user_cat_id = $2)
 			AND status != 'approved'
 	`
 	_, err = tx.Exec(ctx, removeOtherMatchRequestQuery, matchCatId, userCatId)
@@ -257,9 +278,12 @@ func (r *MatchRepositoryImpl) ApproveMatch(ctx context.Context, matchId string) 
 
 func (r *MatchRepositoryImpl) RejectMatch(ctx context.Context, matchId string) error {
 	query := `
-		UPDATE match_cats
-		SET status = 'rejected'
-		WHERE id = $1
+		UPDATE 
+			match_requests
+		SET 
+			status = 'rejected'
+		WHERE 
+			id = $1
 	`
 	_, err := r.DB.Exec(ctx, query, matchId)
 	if err != nil {

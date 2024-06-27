@@ -173,12 +173,12 @@ func (s *MatchServiceImpl) ApproveMatch(ctx context.Context, userId string, payl
 		return matcherror.ErrMatchIdIsNoLongerValid
 	}
 
-	isRequestIssuer, err := s.MatchRepository.VerifyRequestIssuer(ctx, payload.MatchId, userId)
+	isMatchIssuer, err := s.MatchRepository.VerifyMatchIssuer(ctx, payload.MatchId, userId)
 	if err != nil {
 		return err
 	}
-	if isRequestIssuer {
-		return matcherror.ErrUnauthorizedDecision
+	if isMatchIssuer {
+		return matcherror.ErrIssuerCannotDecide
 	}
 
 	err = s.MatchRepository.ApproveMatch(ctx, payload.MatchId)
@@ -206,12 +206,12 @@ func (s *MatchServiceImpl) RejectMatch(ctx context.Context, userId string, paylo
 		return matcherror.ErrMatchIdIsNoLongerValid
 	}
 
-	isRequestIssuer, err := s.MatchRepository.VerifyRequestIssuer(ctx, payload.MatchId, userId)
+	isMatchIssuer, err := s.MatchRepository.VerifyMatchIssuer(ctx, payload.MatchId, userId)
 	if err != nil {
 		return err
 	}
-	if isRequestIssuer {
-		return matcherror.ErrUnauthorizedDecision
+	if isMatchIssuer {
+		return matcherror.ErrIssuerCannotDecide
 	}
 
 	err = s.MatchRepository.RejectMatch(ctx, payload.MatchId)

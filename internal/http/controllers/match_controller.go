@@ -111,7 +111,7 @@ func (c *MatchControllerImpl) HandleApproveMatch(w http.ResponseWriter, r *http.
 		httphelper.ErrorResponse(w, http.StatusBadRequest, err)
 		return
 	}
-	if errors.Is(err, matcherror.ErrUnauthorizedDecision) {
+	if errors.Is(err, matcherror.ErrIssuerCannotDecide) {
 		httphelper.ErrorResponse(w, http.StatusForbidden, err)
 		return
 	}
@@ -145,7 +145,7 @@ func (c *MatchControllerImpl) HandleRejectMatch(w http.ResponseWriter, r *http.R
 		httphelper.ErrorResponse(w, http.StatusBadRequest, err)
 		return
 	}
-	if errors.Is(err, matcherror.ErrUnauthorizedDecision) {
+	if errors.Is(err, matcherror.ErrIssuerCannotDecide) {
 		httphelper.ErrorResponse(w, http.StatusForbidden, err)
 		return
 	}
