@@ -3,7 +3,6 @@ package services
 import (
 	"context"
 
-	"github.com/danzBraham/cats-social/internal/entities/catentity"
 	"github.com/danzBraham/cats-social/internal/entities/matchentity"
 	"github.com/danzBraham/cats-social/internal/errors/matcherror"
 	"github.com/danzBraham/cats-social/internal/repositories"
@@ -98,63 +97,7 @@ func (s *MatchServiceImpl) CreateMatch(ctx context.Context, userId string, paylo
 }
 
 func (s *MatchServiceImpl) GetMatches(ctx context.Context, userId string) ([]*matchentity.GetMatchResponse, error) {
-	matches, err := s.MatchRepository.GetMatches(ctx, userId)
-	if err != nil {
-		return nil, err
-	}
-
-	matchResponses := []*matchentity.GetMatchResponse{}
-	for _, match := range matches {
-		matchCatDetail, err := s.CatRepository.GetCatById(ctx, match.MatchCatId)
-		if err != nil {
-			return nil, err
-		}
-
-		userCatDetail, err := s.CatRepository.GetCatById(ctx, match.UserCatId)
-		if err != nil {
-			return nil, err
-		}
-
-		issuerDetail, err := s.UserRepository.GetUserById(ctx, userCatDetail.OwnerId)
-		if err != nil {
-			return nil, err
-		}
-
-		matchResponses = append(matchResponses, &matchentity.GetMatchResponse{
-			Id: match.Id,
-			IssuedBy: matchentity.IssuerDetail{
-				Name:      issuerDetail.Name,
-				Email:     issuerDetail.Email,
-				CreatedAt: issuerDetail.CreatedAt,
-			},
-			MatchCatDetail: catentity.GetCatResponse{
-				Id:          matchCatDetail.Id,
-				Name:        matchCatDetail.Name,
-				Race:        matchCatDetail.Race,
-				Sex:         matchCatDetail.Sex,
-				AgeInMonth:  matchCatDetail.AgeInMonth,
-				Description: matchCatDetail.Description,
-				ImageUrls:   matchCatDetail.ImageUrls,
-				HasMatched:  matchCatDetail.HasMatched,
-				CreatedAt:   matchCatDetail.CreatedAt,
-			},
-			UserCatDetail: catentity.GetCatResponse{
-				Id:          userCatDetail.Id,
-				Name:        userCatDetail.Name,
-				Race:        userCatDetail.Race,
-				Sex:         userCatDetail.Sex,
-				AgeInMonth:  userCatDetail.AgeInMonth,
-				Description: userCatDetail.Description,
-				ImageUrls:   userCatDetail.ImageUrls,
-				HasMatched:  userCatDetail.HasMatched,
-				CreatedAt:   userCatDetail.CreatedAt,
-			},
-			Message:   match.Message,
-			CreatedAt: match.CreatedAt,
-		})
-	}
-
-	return matchResponses, nil
+	return s.MatchRepository.GetMatches(ctx, userId)
 }
 
 func (s *MatchServiceImpl) ApproveMatch(ctx context.Context, userId string, payload *matchentity.ApproveMatchRequest) error {

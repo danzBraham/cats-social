@@ -19,7 +19,7 @@ type MatchRepository interface {
 	VerifyBothCatsNotMatched(ctx context.Context, matchCatId, userCatId string) error
 	VerifyBothCatsHaveTheSameOwner(ctx context.Context, matchCatId, userCatId string) (bool, error)
 	CreateMatch(ctx context.Context, matchCat *matchentity.Match) error
-	GetMatches(ctx context.Context, userId string) ([]*matchentity.Match, error)
+	GetMatches(ctx context.Context, userId string) ([]*matchentity.GetMatchResponse, error)
 	ApproveMatch(ctx context.Context, matchId string) error
 	RejectMatch(ctx context.Context, matchId string) error
 	DeleteMatch(ctx context.Context, matchId string) error
@@ -170,25 +170,46 @@ func (r *MatchRepositoryImpl) CreateMatch(ctx context.Context, matchCat *matchen
 	return nil
 }
 
-func (r *MatchRepositoryImpl) GetMatches(ctx context.Context, userId string) ([]*matchentity.Match, error) {
+func (r *MatchRepositoryImpl) GetMatches(ctx context.Context, userId string) ([]*matchentity.GetMatchResponse, error) {
 	query := `
-		SELECT 
-			mr.id, 
-			mr.match_cat_id,
-			mr.user_cat_id,
+		SELECT
+			mr.id,
+			u.name AS issuer_name,
+			u.email AS issuer_email,
+			u.created_at AS issuer_created_at,
+			mc.id AS mc_id,
+			mc.name AS mc_name,
+			mc.race AS mc_race,
+			mc.sex AS mc_sex,
+			mc.description AS mc_description,
+			mc.age_in_month AS mc_age_in_month,
+			mc.image_urls AS mc_image_urls,
+			mc.has_matched AS mc_has_matched,
+			mc.created_at AS mc_created_at,
+			uc.id AS uc_id,
+			uc.name AS uc_name,
+			uc.race AS uc_race,
+			uc.sex AS uc_sex,
+			uc.description AS uc_description,
+			uc.age_in_month AS uc_age_in_month,
+			uc.image_urls AS uc_image_urls,
+			uc.has_matched AS uc_has_matched,
+			uc.created_at AS uc_created_at,
 			mr.message,
 			mr.created_at
-		FROM 
+		FROM
 			match_requests mr
 		JOIN
 			cats mc ON mr.match_cat_id = mc.id
 		JOIN
 			cats uc ON mr.user_cat_id = uc.id
-		WHERE 
+		JOIN
+			users u ON uc.owner_id = u.id
+		WHERE
 			(mc.owner_id = $1 OR uc.owner_id = $1)
 			AND mr.is_deleted = false
 		ORDER BY
-			created_at DESC
+			created_at
 	`
 	rows, err := r.DB.Query(ctx, query, userId)
 	if err != nil {
@@ -196,22 +217,49 @@ func (r *MatchRepositoryImpl) GetMatches(ctx context.Context, userId string) ([]
 	}
 	defer rows.Close()
 
-	matches := []*matchentity.Match{}
+	matches := []*matchentity.GetMatchResponse{}
 	for rows.Next() {
-		var matchCat matchentity.Match
-		var createdAt time.Time
+		var match matchentity.GetMatchResponse
+		var issuerCreatedAt, matchCatCreatedAt, userCatCreatedAt, matchCreatedAt time.Time
 		err := rows.Scan(
-			&matchCat.Id,
-			&matchCat.MatchCatId,
-			&matchCat.UserCatId,
-			&matchCat.Message,
-			&createdAt,
+			&match.Id,
+			&match.IssuedBy.Name,
+			&match.IssuedBy.Email,
+			&issuerCreatedAt,
+			&match.MatchCatDetail.Id,
+			&match.MatchCatDetail.Name,
+			&match.MatchCatDetail.Race,
+			&match.MatchCatDetail.Sex,
+			&match.MatchCatDetail.Description,
+			&match.MatchCatDetail.AgeInMonth,
+			&match.MatchCatDetail.ImageUrls,
+			&match.MatchCatDetail.HasMatched,
+			&matchCatCreatedAt,
+			&match.UserCatDetail.Id,
+			&match.UserCatDetail.Name,
+			&match.UserCatDetail.Race,
+			&match.UserCatDetail.Sex,
+			&match.UserCatDetail.Description,
+			&match.UserCatDetail.AgeInMonth,
+			&match.UserCatDetail.ImageUrls,
+			&match.UserCatDetail.HasMatched,
+			&userCatCreatedAt,
+			&match.Message,
+			&matchCreatedAt,
 		)
 		if err != nil {
 			return nil, err
 		}
-		matchCat.CreatedAt = createdAt.Format(time.RFC3339)
-		matches = append(matches, &matchCat)
+		match.IssuedBy.CreatedAt = issuerCreatedAt.Format(time.RFC3339)
+		match.MatchCatDetail.CreatedAt = matchCatCreatedAt.Format(time.RFC3339)
+		match.UserCatDetail.CreatedAt = userCatCreatedAt.Format(time.RFC3339)
+		match.CreatedAt = matchCreatedAt.Format(time.RFC3339)
+		matches = append(matches, &match)
+	}
+
+	err = rows.Err()
+	if err != nil {
+		return nil, err
 	}
 
 	return matches, nil
