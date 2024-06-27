@@ -1,3 +1,5 @@
+BEGIN;
+
 DO $$
 BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'cat_race') THEN
@@ -38,3 +40,5 @@ CREATE TABLE IF NOT EXISTS cats (
   updated_at TIMESTAMP DEFAULT NOW(),
   FOREIGN KEY (owner_id) REFERENCES users(id) ON DELETE NO ACTION ON UPDATE NO ACTION
 );
+
+COMMIT;
