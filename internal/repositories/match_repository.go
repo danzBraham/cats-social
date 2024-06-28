@@ -123,22 +123,22 @@ func (r *MatchRepositoryImpl) IsBothCatsHaveSameGender(ctx context.Context, matc
 func (r *MatchRepositoryImpl) IsBothCatsAlreadyMatched(ctx context.Context, matchCatId, userCatId string) (bool, error) {
 	query := `
 		SELECT
-			c1.has_matched, c2.has_matched
+			status = 'approved'
 		FROM
-			cats c1, cats c2
+			match_requests
 		WHERE
-			c1.id = $1
-			AND c2.id = $2
+			(match_cat_id = $1 OR user_cat_id = $1)
+			AND (match_cat_id = $2 OR user_cat_id = $2)
 	`
-	var hasMatched1, hasMatched2 bool
-	err := r.DB.QueryRow(ctx, query, matchCatId, userCatId).Scan(&hasMatched1, &hasMatched2)
+	var result bool
+	err := r.DB.QueryRow(ctx, query, matchCatId, userCatId).Scan(&result)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return false, nil
 	}
 	if err != nil {
 		return false, err
 	}
-	return hasMatched1 && hasMatched2, nil
+	return result, nil
 }
 
 func (r *MatchRepositoryImpl) IsOwnerOfBothCats(ctx context.Context, matchCatId, userCatId string) (bool, error) {
