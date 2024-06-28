@@ -5,6 +5,7 @@ CREATE TABLE IF NOT EXISTS users (
   name VARCHAR(50) NOT NULL,
   email VARCHAR(50) NOT NULL,
   password VARCHAR(60) NOT NULL,
+  is_deleted BOOLEAN NOT NULL DEFAULT false,
   created_at TIMESTAMP DEFAULT NOW(),
   updated_at TIMESTAMP DEFAULT NOW()
 );

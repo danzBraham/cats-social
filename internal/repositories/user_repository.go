@@ -12,10 +12,10 @@ import (
 )
 
 type UserRepository interface {
-	VerifyEmail(ctx context.Context, email string) (bool, error)
+	IsEmailExists(ctx context.Context, email string) (bool, error)
 	CreateUser(ctx context.Context, user *userentity.User) error
 	GetUserByEmail(ctx context.Context, email string) (*userentity.User, error)
-	GetUserById(ctx context.Context, id string) (*userentity.User, error)
+	GetUserById(ctx context.Context, userId string) (*userentity.User, error)
 }
 
 type UserRepositoryImpl struct {
@@ -26,10 +26,18 @@ func NewUserRepository(db *pgxpool.Pool) UserRepository {
 	return &UserRepositoryImpl{DB: db}
 }
 
-func (r *UserRepositoryImpl) VerifyEmail(ctx context.Context, email string) (bool, error) {
-	query := `SELECT 1 FROM users WHERE email = $1`
-	var result int
-	err := r.DB.QueryRow(ctx, query, email).Scan(&result)
+func (r *UserRepositoryImpl) IsEmailExists(ctx context.Context, email string) (bool, error) {
+	query := `
+		SELECT
+			1
+		FROM
+			users
+		WHERE
+			email = $1
+			AND is_deleted = false
+	`
+	var exists int
+	err := r.DB.QueryRow(ctx, query, email).Scan(&exists)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return false, nil
 	}
@@ -41,10 +49,17 @@ func (r *UserRepositoryImpl) VerifyEmail(ctx context.Context, email string) (boo
 
 func (r *UserRepositoryImpl) CreateUser(ctx context.Context, user *userentity.User) error {
 	query := `
-		INSERT INTO users (id, name, email, password)
-		VALUES ($1, $2, $3, $4)
+		INSERT INTO
+			users (id, name, email, password)
+		VALUES
+			($1, $2, $3, $4)
 	`
-	_, err := r.DB.Exec(ctx, query, &user.Id, &user.Name, &user.Email, &user.Password)
+	_, err := r.DB.Exec(ctx, query,
+		&user.Id,
+		&user.Name,
+		&user.Email,
+		&user.Password,
+	)
 	if err != nil {
 		return err
 	}
@@ -53,13 +68,17 @@ func (r *UserRepositoryImpl) CreateUser(ctx context.Context, user *userentity.Us
 
 func (r *UserRepositoryImpl) GetUserByEmail(ctx context.Context, email string) (*userentity.User, error) {
 	query := `
-		SELECT id,
-					name,
-					email,
-					password,
-					created_at
-		FROM users 
-		WHERE email = $1
+		SELECT
+			id,
+			name,
+			email,
+			password,
+			created_at
+		FROM
+			users 
+		WHERE
+			email = $1
+			AND is_deleted = false
 	`
 	var user userentity.User
 	var createdAt time.Time
@@ -80,19 +99,23 @@ func (r *UserRepositoryImpl) GetUserByEmail(ctx context.Context, email string) (
 	return &user, nil
 }
 
-func (r *UserRepositoryImpl) GetUserById(ctx context.Context, email string) (*userentity.User, error) {
+func (r *UserRepositoryImpl) GetUserById(ctx context.Context, userId string) (*userentity.User, error) {
 	query := `
-		SELECT id,
-					name,
-					email,
-					password,
-					created_at
-		FROM users 
-		WHERE id = $1
+		SELECT
+			id,
+			name,
+			email,
+			password,
+			created_at
+		FROM
+			users 
+		WHERE
+			id = $1
+			AND is_deleted = false
 	`
 	var user userentity.User
 	var createdAt time.Time
-	err := r.DB.QueryRow(ctx, query, email).Scan(
+	err := r.DB.QueryRow(ctx, query, userId).Scan(
 		&user.Id,
 		&user.Name,
 		&user.Email,

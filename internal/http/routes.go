@@ -46,19 +46,22 @@ func (s *Server) RegisterRoutes() http.Handler {
 			r.Post("/login", userController.HandleLoginUser)
 		})
 
-		r.Route("/cat", func(r chi.Router) {
+		r.Group(func(r chi.Router) {
 			r.Use(middlewares.Auth)
-			r.Post("/", catController.HandleCreateCat)
-			r.Get("/", catController.HandleGetCats)
-			r.Put("/{id}", catController.HandleUpdateCatById)
-			r.Delete("/{id}", catController.HandleDeleteCatById)
 
-			r.Route("/match", func(r chi.Router) {
-				r.Post("/", matchController.HandleCreateMatch)
-				r.Get("/", matchController.HandleGetMatches)
-				r.Post("/approve", matchController.HandleApproveMatch)
-				r.Post("/reject", matchController.HandleRejectMatch)
-				r.Delete("/{id}", matchController.HandleDeleteMatch)
+			r.Route("/cat", func(r chi.Router) {
+				r.Post("/", catController.HandleCreateCat)
+				r.Get("/", catController.HandleGetCats)
+				r.Put("/{id}", catController.HandleUpdateCatById)
+				r.Delete("/{id}", catController.HandleDeleteCatById)
+
+				r.Route("/match", func(r chi.Router) {
+					r.Post("/", matchController.HandleCreateMatch)
+					r.Get("/", matchController.HandleGetMatches)
+					r.Post("/approve", matchController.HandleApproveMatch)
+					r.Post("/reject", matchController.HandleRejectMatch)
+					r.Delete("/{id}", matchController.HandleDeleteMatch)
+				})
 			})
 		})
 	})

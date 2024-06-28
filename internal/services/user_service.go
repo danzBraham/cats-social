@@ -26,7 +26,7 @@ func NewUserService(userRepository repositories.UserRepository) UserService {
 }
 
 func (s *UserServiceImpl) RegisterUser(ctx context.Context, payload *userentity.RegisterUserRequest) (*userentity.RegisterUserResponse, error) {
-	isEmailExists, err := s.UserRepository.VerifyEmail(ctx, payload.Email)
+	isEmailExists, err := s.UserRepository.IsEmailExists(ctx, payload.Email)
 	if err != nil {
 		return nil, err
 	}
