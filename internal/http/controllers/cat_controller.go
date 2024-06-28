@@ -85,26 +85,40 @@ func (c *CatControllerImpl) HandleGetCats(w http.ResponseWriter, r *http.Request
 		params.Owned, _ = strconv.ParseBool(owned)
 	}
 
-	catsResponse, err := c.CatService.GetCats(r.Context(), userId, params)
+	catResponses, err := c.CatService.GetCats(r.Context(), userId, params)
 	if err != nil {
 		httphelper.ErrorResponse(w, http.StatusInternalServerError, err)
 		return
 	}
 
-	httphelper.SuccessResponse(w, http.StatusOK, "success", catsResponse)
+	httphelper.SuccessResponse(w, http.StatusOK, "success", catResponses)
 }
 
 func (c *CatControllerImpl) HandleUpdateCatById(w http.ResponseWriter, r *http.Request) {
+	userId, ok := r.Context().Value(middlewares.ContextUserIdKey).(string)
+	if !ok {
+		httphelper.ErrorResponse(w, http.StatusUnauthorized, autherror.ErrUserIdNotFoundInTheContext)
+		return
+	}
+
 	payload := &catentity.UpdateCatRequest{}
 	err := httphelper.DecodeAndValidate(w, r, payload)
 	if err != nil {
 		return
 	}
 
-	id := chi.URLParam(r, "id")
-	err = c.CatService.UpdateCatById(r.Context(), id, payload)
-	if errors.Is(err, caterror.ErrIdNotFound) {
+	catId := chi.URLParam(r, "id")
+	err = c.CatService.UpdateCatById(r.Context(), userId, catId, payload)
+	if errors.Is(err, caterror.ErrCatIdNotFound) {
 		httphelper.ErrorResponse(w, http.StatusNotFound, err)
+		return
+	}
+	if errors.Is(err, caterror.ErrNotCatOwner) {
+		httphelper.ErrorResponse(w, http.StatusForbidden, err)
+		return
+	}
+	if errors.Is(err, caterror.ErrSexIsEdited) {
+		httphelper.ErrorResponse(w, http.StatusBadRequest, err)
 		return
 	}
 	if err != nil {
@@ -116,10 +130,20 @@ func (c *CatControllerImpl) HandleUpdateCatById(w http.ResponseWriter, r *http.R
 }
 
 func (c *CatControllerImpl) HandleDeleteCatById(w http.ResponseWriter, r *http.Request) {
-	id := chi.URLParam(r, "id")
-	err := c.CatService.DeleteCatById(r.Context(), id)
-	if errors.Is(err, caterror.ErrIdNotFound) {
+	userId, ok := r.Context().Value(middlewares.ContextUserIdKey).(string)
+	if !ok {
+		httphelper.ErrorResponse(w, http.StatusUnauthorized, autherror.ErrUserIdNotFoundInTheContext)
+		return
+	}
+
+	catId := chi.URLParam(r, "id")
+	err := c.CatService.DeleteCatById(r.Context(), userId, catId)
+	if errors.Is(err, caterror.ErrCatIdNotFound) {
 		httphelper.ErrorResponse(w, http.StatusNotFound, err)
+		return
+	}
+	if errors.Is(err, caterror.ErrNotCatOwner) {
+		httphelper.ErrorResponse(w, http.StatusForbidden, err)
 		return
 	}
 	if err != nil {

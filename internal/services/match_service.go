@@ -36,7 +36,7 @@ func NewMatchService(
 }
 
 func (s *MatchServiceImpl) CreateMatch(ctx context.Context, userId string, payload *matchentity.CreateMatchRequest) error {
-	isMatchCatIdExists, err := s.CatRepository.VerifyId(ctx, payload.MatchCatId)
+	isMatchCatIdExists, err := s.CatRepository.IsCatIdExists(ctx, payload.MatchCatId)
 	if err != nil {
 		return err
 	}
@@ -44,7 +44,7 @@ func (s *MatchServiceImpl) CreateMatch(ctx context.Context, userId string, paylo
 		return matcherror.ErrMatchCatIdNotFound
 	}
 
-	isUserCatIdExists, err := s.CatRepository.VerifyId(ctx, payload.UserCatId)
+	isUserCatIdExists, err := s.CatRepository.IsCatIdExists(ctx, payload.UserCatId)
 	if err != nil {
 		return err
 	}
@@ -52,11 +52,11 @@ func (s *MatchServiceImpl) CreateMatch(ctx context.Context, userId string, paylo
 		return matcherror.ErrUserCatIdNotFound
 	}
 
-	isUserCatIdBelongToTheUser, err := s.CatRepository.VerifyOwner(ctx, payload.UserCatId, userId)
+	IsCatOwner, err := s.CatRepository.IsCatOwner(ctx, payload.UserCatId, userId)
 	if err != nil {
 		return err
 	}
-	if !isUserCatIdBelongToTheUser {
+	if !IsCatOwner {
 		return matcherror.ErrUserCatIdNotBelongToTheUser
 	}
 

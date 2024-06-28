@@ -3,6 +3,7 @@ package http
 import (
 	"net/http"
 
+	"github.com/danzBraham/cats-social/internal/errors/commonerror"
 	"github.com/danzBraham/cats-social/internal/helpers/httphelper"
 	"github.com/danzBraham/cats-social/internal/http/controllers"
 	"github.com/danzBraham/cats-social/internal/http/middlewares"
@@ -24,19 +25,19 @@ func (s *Server) RegisterRoutes() http.Handler {
 		})
 	})
 
-	// user domain
+	// repositories
 	userRepository := repositories.NewUserRepository(s.DB)
-	userService := services.NewUserService(userRepository)
-	userController := controllers.NewUserController(userService)
-
-	// cat domain
 	catRepository := repositories.NewCatRepository(s.DB)
-	catService := services.NewCatService(catRepository)
-	catController := controllers.NewCatController(catService)
-
-	// match domain
 	matchRepository := repositories.NewMatchRepository(s.DB)
+
+	// services
+	userService := services.NewUserService(userRepository)
+	catService := services.NewCatService(catRepository, matchRepository)
 	matchService := services.NewMatchService(matchRepository, catRepository, userRepository)
+
+	// controllers
+	userController := controllers.NewUserController(userService)
+	catController := controllers.NewCatController(catService)
 	matchController := controllers.NewMatchController(matchService)
 
 	r.Route("/v1", func(r chi.Router) {
@@ -63,17 +64,11 @@ func (s *Server) RegisterRoutes() http.Handler {
 	})
 
 	r.NotFound(func(w http.ResponseWriter, r *http.Request) {
-		httphelper.EncodeJSON(w, http.StatusNotFound, httphelper.ResponseBody{
-			Error:   "not found",
-			Message: "route does not exist",
-		})
+		httphelper.ErrorResponse(w, http.StatusNotFound, commonerror.ErrRouteDoesNotExist)
 	})
 
 	r.MethodNotAllowed(func(w http.ResponseWriter, r *http.Request) {
-		httphelper.EncodeJSON(w, http.StatusMethodNotAllowed, httphelper.ResponseBody{
-			Error:   "method not allowed",
-			Message: "method is not allowed",
-		})
+		httphelper.ErrorResponse(w, http.StatusMethodNotAllowed, commonerror.ErrMethodNotAllowed)
 	})
 
 	return r
