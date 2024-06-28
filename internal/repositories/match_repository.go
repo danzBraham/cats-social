@@ -6,19 +6,18 @@ import (
 	"time"
 
 	"github.com/danzBraham/cats-social/internal/entities/matchentity"
-	"github.com/danzBraham/cats-social/internal/errors/matcherror"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 type MatchRepository interface {
-	VerifyMatchId(ctx context.Context, matchId string) (bool, error)
-	VerifyMatchIdValidity(ctx context.Context, matchId string) (bool, error)
-	VerifyMatchIssuer(ctx context.Context, matchId, userId string) (bool, error)
-	VerifyGenderOfBothCats(ctx context.Context, matchCatId, userCatId string) (bool, error)
-	VerifyCatsNotMatched(ctx context.Context, matchCatId, userCatId string) error
-	VerifyOwnerOfBothCats(ctx context.Context, matchCatId, userCatId string) (bool, error)
-	VerifyMatchRequestExistence(ctx context.Context, matchCatId, userCatId string) (bool, error)
+	IsMatchIdExists(ctx context.Context, matchId string) (bool, error)
+	IsMatchIdValid(ctx context.Context, matchId string) (bool, error)
+	IsMatchIssuer(ctx context.Context, matchId, userId string) (bool, error)
+	IsBothCatsHaveSameGender(ctx context.Context, matchCatId, userCatId string) (bool, error)
+	IsBothCatsAlreadyMatched(ctx context.Context, matchCatId, userCatId string) (bool, error)
+	IsOwnerOfBothCats(ctx context.Context, matchCatId, userCatId string) (bool, error)
+	IsMatchRequestExists(ctx context.Context, matchCatId, userCatId string) (bool, error)
 	CreateMatch(ctx context.Context, matchCat *matchentity.Match) error
 	GetMatches(ctx context.Context, userId string) ([]*matchentity.GetMatchResponse, error)
 	ApproveMatch(ctx context.Context, matchId string) error
@@ -34,7 +33,7 @@ func NewMatchRepository(db *pgxpool.Pool) MatchRepository {
 	return &MatchRepositoryImpl{DB: db}
 }
 
-func (r *MatchRepositoryImpl) VerifyMatchId(ctx context.Context, matchId string) (bool, error) {
+func (r *MatchRepositoryImpl) IsMatchIdExists(ctx context.Context, matchId string) (bool, error) {
 	query := `
 		SELECT
 			1
@@ -55,7 +54,7 @@ func (r *MatchRepositoryImpl) VerifyMatchId(ctx context.Context, matchId string)
 	return true, nil
 }
 
-func (r *MatchRepositoryImpl) VerifyMatchIdValidity(ctx context.Context, matchId string) (bool, error) {
+func (r *MatchRepositoryImpl) IsMatchIdValid(ctx context.Context, matchId string) (bool, error) {
 	query := `
 		SELECT 
 			1
@@ -77,7 +76,7 @@ func (r *MatchRepositoryImpl) VerifyMatchIdValidity(ctx context.Context, matchId
 	return true, nil
 }
 
-func (r *MatchRepositoryImpl) VerifyMatchIssuer(ctx context.Context, matchId, userId string) (bool, error) {
+func (r *MatchRepositoryImpl) IsMatchIssuer(ctx context.Context, matchId, userId string) (bool, error) {
 	query := `
 		SELECT 
 			1
@@ -100,7 +99,7 @@ func (r *MatchRepositoryImpl) VerifyMatchIssuer(ctx context.Context, matchId, us
 	return true, nil
 }
 
-func (r *MatchRepositoryImpl) VerifyGenderOfBothCats(ctx context.Context, matchCatId, userCatId string) (bool, error) {
+func (r *MatchRepositoryImpl) IsBothCatsHaveSameGender(ctx context.Context, matchCatId, userCatId string) (bool, error) {
 	query := `
 		SELECT
 			c1.sex = c2.sex
@@ -121,7 +120,7 @@ func (r *MatchRepositoryImpl) VerifyGenderOfBothCats(ctx context.Context, matchC
 	return result, nil
 }
 
-func (r *MatchRepositoryImpl) VerifyCatsNotMatched(ctx context.Context, matchCatId, userCatId string) error {
+func (r *MatchRepositoryImpl) IsBothCatsAlreadyMatched(ctx context.Context, matchCatId, userCatId string) (bool, error) {
 	query := `
 		SELECT
 			c1.has_matched, c2.has_matched
@@ -134,18 +133,15 @@ func (r *MatchRepositoryImpl) VerifyCatsNotMatched(ctx context.Context, matchCat
 	var hasMatched1, hasMatched2 bool
 	err := r.DB.QueryRow(ctx, query, matchCatId, userCatId).Scan(&hasMatched1, &hasMatched2)
 	if errors.Is(err, pgx.ErrNoRows) {
-		return nil
+		return false, nil
 	}
 	if err != nil {
-		return err
+		return false, err
 	}
-	if hasMatched1 && hasMatched2 {
-		return matcherror.ErrBothCatsHaveAlreadyMatched
-	}
-	return nil
+	return hasMatched1 && hasMatched2, nil
 }
 
-func (r *MatchRepositoryImpl) VerifyOwnerOfBothCats(ctx context.Context, matchCatId, userCatId string) (bool, error) {
+func (r *MatchRepositoryImpl) IsOwnerOfBothCats(ctx context.Context, matchCatId, userCatId string) (bool, error) {
 	query := `
 		SELECT 
 			c1.owner_id = c2.owner_id
@@ -166,7 +162,7 @@ func (r *MatchRepositoryImpl) VerifyOwnerOfBothCats(ctx context.Context, matchCa
 	return result, nil
 }
 
-func (r *MatchRepositoryImpl) VerifyMatchRequestExistence(ctx context.Context, matchCatId, userCatId string) (bool, error) {
+func (r *MatchRepositoryImpl) IsMatchRequestExists(ctx context.Context, matchCatId, userCatId string) (bool, error) {
 	query := `
 		SELECT
 			1

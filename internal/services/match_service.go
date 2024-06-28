@@ -60,7 +60,7 @@ func (s *MatchServiceImpl) CreateMatch(ctx context.Context, userId string, paylo
 		return matcherror.ErrUserCatIdNotBelongToTheUser
 	}
 
-	isBothCatsHaveSameGender, err := s.MatchRepository.VerifyGenderOfBothCats(ctx, payload.MatchCatId, payload.UserCatId)
+	isBothCatsHaveSameGender, err := s.MatchRepository.IsBothCatsHaveSameGender(ctx, payload.MatchCatId, payload.UserCatId)
 	if err != nil {
 		return err
 	}
@@ -68,25 +68,28 @@ func (s *MatchServiceImpl) CreateMatch(ctx context.Context, userId string, paylo
 		return matcherror.ErrBothCatsHaveSameGender
 	}
 
-	err = s.MatchRepository.VerifyCatsNotMatched(ctx, payload.MatchCatId, payload.UserCatId)
+	isBothCatsAlreadyMatched, err := s.MatchRepository.IsBothCatsAlreadyMatched(ctx, payload.MatchCatId, payload.UserCatId)
 	if err != nil {
 		return err
+	}
+	if isBothCatsAlreadyMatched {
+		return matcherror.ErrBothCatsHaveAlreadyMatched
 	}
 
-	isBothCatsHaveSameOwner, err := s.MatchRepository.VerifyOwnerOfBothCats(ctx, payload.MatchCatId, payload.UserCatId)
+	isOwnerOfBothCats, err := s.MatchRepository.IsOwnerOfBothCats(ctx, payload.MatchCatId, payload.UserCatId)
 	if err != nil {
 		return err
 	}
-	if isBothCatsHaveSameOwner {
+	if isOwnerOfBothCats {
 		return matcherror.ErrBothCatsHaveSameOwner
 	}
 
-	isMatchRequestExists, err := s.MatchRepository.VerifyMatchRequestExistence(ctx, payload.MatchCatId, payload.UserCatId)
+	isMatchRequestExists, err := s.MatchRepository.IsMatchRequestExists(ctx, payload.MatchCatId, payload.UserCatId)
 	if err != nil {
 		return err
 	}
 	if isMatchRequestExists {
-		return matcherror.ErrDuplicateMatchRequest
+		return matcherror.ErrMatchRequestAlreadyExists
 	}
 
 	matchCat := &matchentity.Match{
@@ -109,7 +112,7 @@ func (s *MatchServiceImpl) GetMatches(ctx context.Context, userId string) ([]*ma
 }
 
 func (s *MatchServiceImpl) ApproveMatch(ctx context.Context, userId string, payload *matchentity.ApproveMatchRequest) error {
-	isMatchIdExists, err := s.MatchRepository.VerifyMatchId(ctx, payload.MatchId)
+	isMatchIdExists, err := s.MatchRepository.IsMatchIdExists(ctx, payload.MatchId)
 	if err != nil {
 		return err
 	}
@@ -117,7 +120,7 @@ func (s *MatchServiceImpl) ApproveMatch(ctx context.Context, userId string, payl
 		return matcherror.ErrMatchIdNotFound
 	}
 
-	isMatchIdValid, err := s.MatchRepository.VerifyMatchIdValidity(ctx, payload.MatchId)
+	isMatchIdValid, err := s.MatchRepository.IsMatchIdValid(ctx, payload.MatchId)
 	if err != nil {
 		return err
 	}
@@ -125,7 +128,7 @@ func (s *MatchServiceImpl) ApproveMatch(ctx context.Context, userId string, payl
 		return matcherror.ErrMatchIdIsNoLongerValid
 	}
 
-	isMatchIssuer, err := s.MatchRepository.VerifyMatchIssuer(ctx, payload.MatchId, userId)
+	isMatchIssuer, err := s.MatchRepository.IsMatchIssuer(ctx, payload.MatchId, userId)
 	if err != nil {
 		return err
 	}
@@ -142,7 +145,7 @@ func (s *MatchServiceImpl) ApproveMatch(ctx context.Context, userId string, payl
 }
 
 func (s *MatchServiceImpl) RejectMatch(ctx context.Context, userId string, payload *matchentity.RejectMatchRequest) error {
-	isMatchIdExists, err := s.MatchRepository.VerifyMatchId(ctx, payload.MatchId)
+	isMatchIdExists, err := s.MatchRepository.IsMatchIdExists(ctx, payload.MatchId)
 	if err != nil {
 		return err
 	}
@@ -150,7 +153,7 @@ func (s *MatchServiceImpl) RejectMatch(ctx context.Context, userId string, paylo
 		return matcherror.ErrMatchIdNotFound
 	}
 
-	isMatchIdValid, err := s.MatchRepository.VerifyMatchIdValidity(ctx, payload.MatchId)
+	isMatchIdValid, err := s.MatchRepository.IsMatchIdValid(ctx, payload.MatchId)
 	if err != nil {
 		return err
 	}
@@ -158,7 +161,7 @@ func (s *MatchServiceImpl) RejectMatch(ctx context.Context, userId string, paylo
 		return matcherror.ErrMatchIdIsNoLongerValid
 	}
 
-	isMatchIssuer, err := s.MatchRepository.VerifyMatchIssuer(ctx, payload.MatchId, userId)
+	isMatchIssuer, err := s.MatchRepository.IsMatchIssuer(ctx, payload.MatchId, userId)
 	if err != nil {
 		return err
 	}
@@ -175,7 +178,7 @@ func (s *MatchServiceImpl) RejectMatch(ctx context.Context, userId string, paylo
 }
 
 func (s *MatchServiceImpl) DeleteMatch(ctx context.Context, userId, matchId string) error {
-	isMatchIssuer, err := s.MatchRepository.VerifyMatchIssuer(ctx, matchId, userId)
+	isMatchIssuer, err := s.MatchRepository.IsMatchIssuer(ctx, matchId, userId)
 	if err != nil {
 		return err
 	}
@@ -183,7 +186,7 @@ func (s *MatchServiceImpl) DeleteMatch(ctx context.Context, userId, matchId stri
 		return matcherror.ErrNotIssuer
 	}
 
-	isMatchIdExists, err := s.MatchRepository.VerifyMatchId(ctx, matchId)
+	isMatchIdExists, err := s.MatchRepository.IsMatchIdExists(ctx, matchId)
 	if err != nil {
 		return err
 	}
@@ -191,7 +194,7 @@ func (s *MatchServiceImpl) DeleteMatch(ctx context.Context, userId, matchId stri
 		return matcherror.ErrMatchIdNotFound
 	}
 
-	isMatchIdValid, err := s.MatchRepository.VerifyMatchIdValidity(ctx, matchId)
+	isMatchIdValid, err := s.MatchRepository.IsMatchIdValid(ctx, matchId)
 	if err != nil {
 		return err
 	}

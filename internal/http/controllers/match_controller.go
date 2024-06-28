@@ -67,7 +67,7 @@ func (c *MatchControllerImpl) HandleCreateMatch(w http.ResponseWriter, r *http.R
 		httphelper.ErrorResponse(w, http.StatusBadRequest, err)
 		return
 	}
-	if errors.Is(err, matcherror.ErrDuplicateMatchRequest) {
+	if errors.Is(err, matcherror.ErrMatchRequestAlreadyExists) {
 		httphelper.ErrorResponse(w, http.StatusBadRequest, err)
 		return
 	}
