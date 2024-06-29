@@ -178,14 +178,6 @@ func (s *MatchServiceImpl) RejectMatch(ctx context.Context, userId string, paylo
 }
 
 func (s *MatchServiceImpl) DeleteMatch(ctx context.Context, userId, matchId string) error {
-	isMatchIssuer, err := s.MatchRepository.IsMatchIssuer(ctx, matchId, userId)
-	if err != nil {
-		return err
-	}
-	if !isMatchIssuer {
-		return matcherror.ErrNotIssuer
-	}
-
 	isMatchIdExists, err := s.MatchRepository.IsMatchIdExists(ctx, matchId)
 	if err != nil {
 		return err
@@ -200,6 +192,14 @@ func (s *MatchServiceImpl) DeleteMatch(ctx context.Context, userId, matchId stri
 	}
 	if !isMatchIdValid {
 		return matcherror.ErrMatchIdIsNoLongerValid
+	}
+
+	isMatchIssuer, err := s.MatchRepository.IsMatchIssuer(ctx, matchId, userId)
+	if err != nil {
+		return err
+	}
+	if !isMatchIssuer {
+		return matcherror.ErrNotIssuer
 	}
 
 	err = s.MatchRepository.DeleteMatch(ctx, matchId)
