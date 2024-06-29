@@ -4,175 +4,190 @@ import (
 	"errors"
 	"net/http"
 
-	match_exception "github.com/danzbraham/cats-social/internal/commons/exceptions/match"
-	http_common "github.com/danzbraham/cats-social/internal/commons/http"
-	"github.com/danzbraham/cats-social/internal/commons/validator"
-	match_entity "github.com/danzbraham/cats-social/internal/entities/match"
-	"github.com/danzbraham/cats-social/internal/http/middlewares"
-	"github.com/danzbraham/cats-social/internal/services"
+	"github.com/danzBraham/cats-social/internal/entities/matchentity"
+	"github.com/danzBraham/cats-social/internal/errors/autherror"
+	"github.com/danzBraham/cats-social/internal/errors/matcherror"
+	"github.com/danzBraham/cats-social/internal/helpers/httphelper"
+	"github.com/danzBraham/cats-social/internal/http/middlewares"
+	"github.com/danzBraham/cats-social/internal/services"
 	"github.com/go-chi/chi/v5"
 )
 
-type MatchController struct {
-	Service services.MatchService
+type MatchController interface {
+	HandleCreateMatch(w http.ResponseWriter, r *http.Request)
+	HandleGetMatches(w http.ResponseWriter, r *http.Request)
+	HandleApproveMatch(w http.ResponseWriter, r *http.Request)
+	HandleRejectMatch(w http.ResponseWriter, r *http.Request)
+	HandleDeleteMatch(w http.ResponseWriter, r *http.Request)
 }
 
-func NewMatchController(service services.MatchService) *MatchController {
-	return &MatchController{Service: service}
+type MatchControllerImpl struct {
+	MatchService services.MatchService
 }
 
-func (c *MatchController) Routes() chi.Router {
-	r := chi.NewRouter()
-
-	r.Post("/", c.handleMatchCatRequest)
-	r.Get("/", c.handleGetMatchCatRequests)
-	r.Post("/approve", c.handleApproveMatchCatRequest)
-	r.Post("/reject", c.handleRejectMatchCatRequest)
-	r.Delete("/{matchId}", c.handleDeleteMatchCatRequest)
-
-	return r
+func NewMatchController(matchService services.MatchService) MatchController {
+	return &MatchControllerImpl{MatchService: matchService}
 }
 
-func (c *MatchController) handleMatchCatRequest(w http.ResponseWriter, r *http.Request) {
+func (c *MatchControllerImpl) HandleCreateMatch(w http.ResponseWriter, r *http.Request) {
 	userId, ok := r.Context().Value(middlewares.ContextUserIdKey).(string)
 	if !ok {
-		http_common.ResponseError(w, http.StatusBadRequest, "User Id type assertion failed", "User Id not found in context")
-		return
-	}
-	payload := &match_entity.MatchCatRequest{Issuer: userId}
-
-	if err := http_common.DecodeJSON(r, payload); err != nil {
-		http_common.ResponseError(w, http.StatusBadRequest, err.Error(), "Failed to decode JSON")
+		httphelper.ErrorResponse(w, http.StatusUnauthorized, autherror.ErrUserIdNotFoundInTheContext)
 		return
 	}
 
-	if err := validator.ValidatePayload(payload); err != nil {
-		http_common.ResponseError(w, http.StatusBadRequest, err.Error(), "Request doesn't pass validation")
+	payload := &matchentity.CreateMatchRequest{}
+	err := httphelper.DecodeAndValidate(w, r, payload)
+	if err != nil {
 		return
 	}
 
-	err := c.Service.RequestMatchCat(r.Context(), payload)
-	if errors.Is(err, match_exception.ErrMatchCatIdIsNotFound) {
-		http_common.ResponseError(w, http.StatusNotFound, "Not found error", err.Error())
+	err = c.MatchService.CreateMatch(r.Context(), userId, payload)
+	if errors.Is(err, matcherror.ErrMatchCatIdNotFound) {
+		httphelper.ErrorResponse(w, http.StatusNotFound, err)
 		return
 	}
-	if errors.Is(err, match_exception.ErrUserCatIdIsNotFound) {
-		http_common.ResponseError(w, http.StatusNotFound, "Not found error", err.Error())
+	if errors.Is(err, matcherror.ErrUserCatIdNotFound) {
+		httphelper.ErrorResponse(w, http.StatusNotFound, err)
 		return
 	}
-	if errors.Is(err, match_exception.ErrUserCatIdNotBelongTheUser) {
-		http_common.ResponseError(w, http.StatusNotFound, "Not found error", err.Error())
+	if errors.Is(err, matcherror.ErrUserCatIdNotBelongToTheUser) {
+		httphelper.ErrorResponse(w, http.StatusNotFound, err)
 		return
 	}
-	if errors.Is(err, match_exception.ErrBothCatHaveSameGender) {
-		http_common.ResponseError(w, http.StatusBadRequest, "Bad request error", err.Error())
+	if errors.Is(err, matcherror.ErrBothCatsHaveSameGender) {
+		httphelper.ErrorResponse(w, http.StatusBadRequest, err)
 		return
 	}
-	if errors.Is(err, match_exception.ErrBothCatAlreadyMatched) {
-		http_common.ResponseError(w, http.StatusBadRequest, "Bad request error", err.Error())
+	if errors.Is(err, matcherror.ErrBothCatsHaveSameOwner) {
+		httphelper.ErrorResponse(w, http.StatusBadRequest, err)
 		return
 	}
-	if errors.Is(err, match_exception.ErrBothCatsHaveTheSameOwner) {
-		http_common.ResponseError(w, http.StatusBadRequest, "Bad request error", err.Error())
+	if errors.Is(err, matcherror.ErrBothCatsHaveAlreadyMatched) {
+		httphelper.ErrorResponse(w, http.StatusBadRequest, err)
+		return
+	}
+	if errors.Is(err, matcherror.ErrMatchRequestAlreadyExists) {
+		httphelper.ErrorResponse(w, http.StatusBadRequest, err)
 		return
 	}
 	if err != nil {
-		http_common.ResponseError(w, http.StatusInternalServerError, "Internal server error", err.Error())
+		httphelper.ErrorResponse(w, http.StatusInternalServerError, err)
 		return
 	}
 
-	http_common.ResponseSuccess(w, http.StatusCreated, "successfully send match request", nil)
+	httphelper.SuccessResponse(w, http.StatusCreated, "successfully send match request", nil)
 }
 
-func (c *MatchController) handleGetMatchCatRequests(w http.ResponseWriter, r *http.Request) {
-	matchCatsResponse, err := c.Service.GetMatchCatRequests(r.Context())
-	if err != nil {
-		http_common.ResponseError(w, http.StatusInternalServerError, "Internal server error", err.Error())
-		return
-	}
-
-	http_common.ResponseSuccess(w, http.StatusCreated, "successfully get match requests", matchCatsResponse)
-}
-
-func (c *MatchController) handleApproveMatchCatRequest(w http.ResponseWriter, r *http.Request) {
-	payload := &match_entity.DecisionMatchRequest{}
-
-	if err := http_common.DecodeJSON(r, payload); err != nil {
-		http_common.ResponseError(w, http.StatusBadRequest, err.Error(), "Failed to decode JSON")
-		return
-	}
-
-	if err := validator.ValidatePayload(payload); err != nil {
-		http_common.ResponseError(w, http.StatusBadRequest, err.Error(), "Request doesn't pass validation")
-		return
-	}
-
-	err := c.Service.ApproveMatchCatRequest(r.Context(), payload)
-	if errors.Is(err, match_exception.ErrMatchIdIsNotFound) {
-		http_common.ResponseError(w, http.StatusNotFound, "Not found error", err.Error())
-		return
-	}
-	if errors.Is(err, match_exception.ErrMatchIdIsNoLongerValid) {
-		http_common.ResponseError(w, http.StatusBadRequest, "Bad request error", err.Error())
-		return
-	}
-	if err != nil {
-		http_common.ResponseError(w, http.StatusInternalServerError, "Internal server error", err.Error())
-		return
-	}
-
-	http_common.ResponseSuccess(w, http.StatusOK, "successfully matches the cat match request", nil)
-}
-
-func (c *MatchController) handleRejectMatchCatRequest(w http.ResponseWriter, r *http.Request) {
-	payload := &match_entity.DecisionMatchRequest{}
-
-	if err := http_common.DecodeJSON(r, payload); err != nil {
-		http_common.ResponseError(w, http.StatusBadRequest, err.Error(), "Failed to decode JSON")
-		return
-	}
-
-	if err := validator.ValidatePayload(payload); err != nil {
-		http_common.ResponseError(w, http.StatusBadRequest, err.Error(), "Request doesn't pass validation")
-		return
-	}
-
-	err := c.Service.RejectMatchCatRequest(r.Context(), payload)
-	if errors.Is(err, match_exception.ErrMatchIdIsNotFound) {
-		http_common.ResponseError(w, http.StatusNotFound, "Not found error", err.Error())
-		return
-	}
-	if errors.Is(err, match_exception.ErrMatchIdIsNoLongerValid) {
-		http_common.ResponseError(w, http.StatusBadRequest, "Bad request error", err.Error())
-		return
-	}
-	if err != nil {
-		http_common.ResponseError(w, http.StatusInternalServerError, "Internal server error", err.Error())
-		return
-	}
-
-	http_common.ResponseSuccess(w, http.StatusOK, "successfully reject the cat match request", nil)
-}
-
-func (c *MatchController) handleDeleteMatchCatRequest(w http.ResponseWriter, r *http.Request) {
-	matchId := chi.URLParam(r, "matchId")
+func (c *MatchControllerImpl) HandleGetMatches(w http.ResponseWriter, r *http.Request) {
 	userId, ok := r.Context().Value(middlewares.ContextUserIdKey).(string)
 	if !ok {
-		http_common.ResponseError(w, http.StatusBadRequest, "User Id type assertion failed", "User Id not found in context")
-		return
-	}
-	payload := &match_entity.DeleteMatchCatRequest{MatchId: matchId, Issuer: userId}
-
-	if err := validator.ValidatePayload(payload); err != nil {
-		http_common.ResponseError(w, http.StatusBadRequest, err.Error(), "Request doesn't pass validation")
+		httphelper.ErrorResponse(w, http.StatusUnauthorized, autherror.ErrUserIdNotFoundInTheContext)
 		return
 	}
 
-	err := c.Service.DeleteMatchCatRequest(r.Context(), payload)
+	matchResponses, err := c.MatchService.GetMatches(r.Context(), userId)
 	if err != nil {
-		http_common.ResponseError(w, http.StatusInternalServerError, "Internal server error", err.Error())
+		httphelper.ErrorResponse(w, http.StatusInternalServerError, err)
 		return
 	}
 
-	http_common.ResponseSuccess(w, http.StatusOK, "successfully remove a cat match request", nil)
+	httphelper.SuccessResponse(w, http.StatusOK, "successfully get match requests", matchResponses)
+}
+
+func (c *MatchControllerImpl) HandleApproveMatch(w http.ResponseWriter, r *http.Request) {
+	userId, ok := r.Context().Value(middlewares.ContextUserIdKey).(string)
+	if !ok {
+		httphelper.ErrorResponse(w, http.StatusUnauthorized, autherror.ErrUserIdNotFoundInTheContext)
+		return
+	}
+
+	payload := &matchentity.ApproveMatchRequest{}
+	err := httphelper.DecodeAndValidate(w, r, payload)
+	if err != nil {
+		return
+	}
+
+	err = c.MatchService.ApproveMatch(r.Context(), userId, payload)
+	if errors.Is(err, matcherror.ErrMatchIdNotFound) {
+		httphelper.ErrorResponse(w, http.StatusNotFound, err)
+		return
+	}
+	if errors.Is(err, matcherror.ErrMatchIdIsNoLongerValid) {
+		httphelper.ErrorResponse(w, http.StatusBadRequest, err)
+		return
+	}
+	if errors.Is(err, matcherror.ErrIssuerCannotDecide) {
+		httphelper.ErrorResponse(w, http.StatusForbidden, err)
+		return
+	}
+	if err != nil {
+		httphelper.ErrorResponse(w, http.StatusInternalServerError, err)
+		return
+	}
+
+	httphelper.SuccessResponse(w, http.StatusOK, "successfully matches the cat match request", nil)
+}
+
+func (c *MatchControllerImpl) HandleRejectMatch(w http.ResponseWriter, r *http.Request) {
+	userId, ok := r.Context().Value(middlewares.ContextUserIdKey).(string)
+	if !ok {
+		httphelper.ErrorResponse(w, http.StatusUnauthorized, autherror.ErrUserIdNotFoundInTheContext)
+		return
+	}
+
+	payload := &matchentity.RejectMatchRequest{}
+	err := httphelper.DecodeAndValidate(w, r, payload)
+	if err != nil {
+		return
+	}
+
+	err = c.MatchService.RejectMatch(r.Context(), userId, payload)
+	if errors.Is(err, matcherror.ErrMatchIdNotFound) {
+		httphelper.ErrorResponse(w, http.StatusNotFound, err)
+		return
+	}
+	if errors.Is(err, matcherror.ErrMatchIdIsNoLongerValid) {
+		httphelper.ErrorResponse(w, http.StatusBadRequest, err)
+		return
+	}
+	if errors.Is(err, matcherror.ErrIssuerCannotDecide) {
+		httphelper.ErrorResponse(w, http.StatusForbidden, err)
+		return
+	}
+	if err != nil {
+		httphelper.ErrorResponse(w, http.StatusInternalServerError, err)
+		return
+	}
+
+	httphelper.SuccessResponse(w, http.StatusOK, "successfully reject the cat match request", nil)
+}
+
+func (c *MatchControllerImpl) HandleDeleteMatch(w http.ResponseWriter, r *http.Request) {
+	userId, ok := r.Context().Value(middlewares.ContextUserIdKey).(string)
+	if !ok {
+		httphelper.ErrorResponse(w, http.StatusUnauthorized, autherror.ErrUserIdNotFoundInTheContext)
+		return
+	}
+
+	matchId := chi.URLParam(r, "id")
+	err := c.MatchService.DeleteMatch(r.Context(), userId, matchId)
+	if errors.Is(err, matcherror.ErrMatchIdNotFound) {
+		httphelper.ErrorResponse(w, http.StatusNotFound, err)
+		return
+	}
+	if errors.Is(err, matcherror.ErrNotIssuer) {
+		httphelper.ErrorResponse(w, http.StatusForbidden, err)
+		return
+	}
+	if errors.Is(err, matcherror.ErrMatchIdIsNoLongerValid) {
+		httphelper.ErrorResponse(w, http.StatusBadRequest, err)
+		return
+	}
+	if err != nil {
+		httphelper.ErrorResponse(w, http.StatusInternalServerError, err)
+		return
+	}
+
+	httphelper.SuccessResponse(w, http.StatusOK, "successfully remove a cat match request", nil)
 }

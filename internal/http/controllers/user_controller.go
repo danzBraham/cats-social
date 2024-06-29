@@ -5,97 +5,79 @@ import (
 	"net/http"
 	"time"
 
-	user_exception "github.com/danzbraham/cats-social/internal/commons/exceptions/users"
-	http_common "github.com/danzbraham/cats-social/internal/commons/http"
-	"github.com/danzbraham/cats-social/internal/commons/validator"
-	user_entity "github.com/danzbraham/cats-social/internal/entities/user"
-	"github.com/danzbraham/cats-social/internal/services"
-	"github.com/go-chi/chi/v5"
+	"github.com/danzBraham/cats-social/internal/entities/userentity"
+	"github.com/danzBraham/cats-social/internal/errors/usererror"
+	"github.com/danzBraham/cats-social/internal/helpers/httphelper"
+	"github.com/danzBraham/cats-social/internal/services"
 )
 
-type UserController struct {
-	Service services.UserService
+type UserController interface {
+	HandleRegisterUser(w http.ResponseWriter, r *http.Request)
+	HandleLoginUser(w http.ResponseWriter, r *http.Request)
 }
 
-func NewUserController(service services.UserService) *UserController {
-	return &UserController{Service: service}
+type UserControllerImpl struct {
+	UserService services.UserService
 }
 
-func (c *UserController) Routes() chi.Router {
-	r := chi.NewRouter()
-
-	r.Post("/register", c.handleRegisterUser)
-	r.Post("/login", c.handleLoginUser)
-
-	return r
+func NewUserController(userService services.UserService) UserController {
+	return &UserControllerImpl{UserService: userService}
 }
 
-func (c *UserController) handleRegisterUser(w http.ResponseWriter, r *http.Request) {
-	payload := &user_entity.RegisterUserRequest{}
-
-	if err := http_common.DecodeJSON(r, payload); err != nil {
-		http_common.ResponseError(w, http.StatusBadRequest, err.Error(), "Failed to decode JSON")
+func (c *UserControllerImpl) HandleRegisterUser(w http.ResponseWriter, r *http.Request) {
+	payload := &userentity.RegisterUserRequest{}
+	err := httphelper.DecodeAndValidate(w, r, payload)
+	if err != nil {
 		return
 	}
 
-	if err := validator.ValidatePayload(payload); err != nil {
-		http_common.ResponseError(w, http.StatusBadRequest, err.Error(), "Request doesn't pass validation")
-		return
-	}
-
-	userResponse, err := c.Service.RegisterUser(r.Context(), payload)
-	if errors.Is(err, user_exception.ErrEmailAlreadyExists) {
-		http_common.ResponseError(w, http.StatusConflict, "Conflict error", err.Error())
+	userResponse, err := c.UserService.RegisterUser(r.Context(), payload)
+	if errors.Is(err, usererror.ErrEmailAlreadyExists) {
+		httphelper.ErrorResponse(w, http.StatusConflict, err)
 		return
 	}
 	if err != nil {
-		http_common.ResponseError(w, http.StatusInternalServerError, "Internal server error", err.Error())
+		httphelper.ErrorResponse(w, http.StatusInternalServerError, err)
 		return
 	}
 
 	cookie := &http.Cookie{
 		Name:    "Authorization",
 		Value:   userResponse.AccessToken,
-		Expires: time.Now().Add(2 * time.Hour),
+		Expires: time.Now().Add(8 * time.Hour),
 	}
 	http.SetCookie(w, cookie)
 
-	http_common.ResponseSuccess(w, http.StatusCreated, "User successfully registered", userResponse)
+	httphelper.SuccessResponse(w, http.StatusCreated, "User registered successfully", userResponse)
 }
 
-func (c *UserController) handleLoginUser(w http.ResponseWriter, r *http.Request) {
-	payload := &user_entity.LoginUserRequest{}
-
-	if err := http_common.DecodeJSON(r, payload); err != nil {
-		http_common.ResponseError(w, http.StatusBadRequest, err.Error(), "Failed to decode JSON")
+func (c *UserControllerImpl) HandleLoginUser(w http.ResponseWriter, r *http.Request) {
+	payload := &userentity.LoginUserRequest{}
+	err := httphelper.DecodeAndValidate(w, r, payload)
+	if err != nil {
 		return
 	}
 
-	if err := validator.ValidatePayload(payload); err != nil {
-		http_common.ResponseError(w, http.StatusBadRequest, err.Error(), "Request doesn't pass validation")
+	userResponse, err := c.UserService.LoginUser(r.Context(), payload)
+	if errors.Is(err, usererror.ErrUserNotFound) {
+		httphelper.ErrorResponse(w, http.StatusNotFound, err)
 		return
 	}
-
-	userResponse, err := c.Service.LoginUser(r.Context(), payload)
-	if errors.Is(err, user_exception.ErrUserNotFound) {
-		http_common.ResponseError(w, http.StatusNotFound, "Not found error", err.Error())
-		return
-	}
-	if errors.Is(err, user_exception.ErrInvalidPassword) {
-		http_common.ResponseError(w, http.StatusBadRequest, "Bad request error", err.Error())
+	if errors.Is(err, usererror.ErrInvalidPassword) {
+		httphelper.ErrorResponse(w, http.StatusBadRequest, err)
 		return
 	}
 	if err != nil {
-		http_common.ResponseError(w, http.StatusInternalServerError, "Internal server error", err.Error())
+		httphelper.ErrorResponse(w, http.StatusInternalServerError, err)
 		return
 	}
 
 	cookie := &http.Cookie{
-		Name:    "Authorization",
+		Name:    "Authorizaiton",
 		Value:   userResponse.AccessToken,
-		Expires: time.Now().Add(2 * time.Hour),
+		Expires: time.Now().Add(8 * time.Hour),
 	}
 	http.SetCookie(w, cookie)
 
-	http_common.ResponseSuccess(w, http.StatusOK, "User successfully logged", userResponse)
+	httphelper.SuccessResponse(w, http.StatusOK, "User logged successfully", userResponse)
 }

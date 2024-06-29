@@ -3,17 +3,19 @@ package repositories
 import (
 	"context"
 	"errors"
+	"time"
 
-	user_exception "github.com/danzbraham/cats-social/internal/commons/exceptions/users"
-	user_entity "github.com/danzbraham/cats-social/internal/entities/user"
+	"github.com/danzBraham/cats-social/internal/entities/userentity"
+	"github.com/danzBraham/cats-social/internal/errors/usererror"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 type UserRepository interface {
-	VerifyEmail(ctx context.Context, email string) (bool, error)
-	CreateUser(ctx context.Context, user *user_entity.User) error
-	GetUserByEmail(ctx context.Context, email string) (*user_entity.User, error)
+	IsEmailExists(ctx context.Context, email string) (bool, error)
+	CreateUser(ctx context.Context, user *userentity.User) error
+	GetUserByEmail(ctx context.Context, email string) (*userentity.User, error)
+	GetUserById(ctx context.Context, userId string) (*userentity.User, error)
 }
 
 type UserRepositoryImpl struct {
@@ -24,10 +26,18 @@ func NewUserRepository(db *pgxpool.Pool) UserRepository {
 	return &UserRepositoryImpl{DB: db}
 }
 
-func (r *UserRepositoryImpl) VerifyEmail(ctx context.Context, email string) (bool, error) {
-	var isEmailExists int
-	query := `SELECT 1 FROM users WHERE email = $1`
-	err := r.DB.QueryRow(ctx, query, email).Scan(&isEmailExists)
+func (r *UserRepositoryImpl) IsEmailExists(ctx context.Context, email string) (bool, error) {
+	query := `
+		SELECT
+			1
+		FROM
+			users
+		WHERE
+			email = $1
+			AND is_deleted = false
+	`
+	var exists int
+	err := r.DB.QueryRow(ctx, query, email).Scan(&exists)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return false, nil
 	}
@@ -37,24 +47,87 @@ func (r *UserRepositoryImpl) VerifyEmail(ctx context.Context, email string) (boo
 	return true, nil
 }
 
-func (r *UserRepositoryImpl) CreateUser(ctx context.Context, user *user_entity.User) error {
-	query := `INSERT INTO users (id, email, name, password) VALUES ($1, $2, $3, $4)`
-	_, err := r.DB.Exec(ctx, query, &user.Id, &user.Email, &user.Name, &user.Password)
+func (r *UserRepositoryImpl) CreateUser(ctx context.Context, user *userentity.User) error {
+	query := `
+		INSERT INTO
+			users (id, name, email, password)
+		VALUES
+			($1, $2, $3, $4)
+	`
+	_, err := r.DB.Exec(ctx, query,
+		&user.Id,
+		&user.Name,
+		&user.Email,
+		&user.Password,
+	)
 	if err != nil {
 		return err
 	}
 	return nil
 }
 
-func (r *UserRepositoryImpl) GetUserByEmail(ctx context.Context, email string) (*user_entity.User, error) {
-	user := &user_entity.User{}
-	query := `SELECT id, email, name, password FROM users WHERE email = $1`
-	err := r.DB.QueryRow(ctx, query, email).Scan(&user.Id, &user.Email, &user.Name, &user.Password)
+func (r *UserRepositoryImpl) GetUserByEmail(ctx context.Context, email string) (*userentity.User, error) {
+	query := `
+		SELECT
+			id,
+			name,
+			email,
+			password,
+			created_at
+		FROM
+			users 
+		WHERE
+			email = $1
+			AND is_deleted = false
+	`
+	var user userentity.User
+	var createdAt time.Time
+	err := r.DB.QueryRow(ctx, query, email).Scan(
+		&user.Id,
+		&user.Name,
+		&user.Email,
+		&user.Password,
+		&createdAt,
+	)
 	if errors.Is(err, pgx.ErrNoRows) {
-		return nil, user_exception.ErrUserNotFound
+		return nil, usererror.ErrUserNotFound
 	}
 	if err != nil {
 		return nil, err
 	}
-	return user, nil
+	user.CreatedAt = createdAt.Format(time.RFC3339)
+	return &user, nil
+}
+
+func (r *UserRepositoryImpl) GetUserById(ctx context.Context, userId string) (*userentity.User, error) {
+	query := `
+		SELECT
+			id,
+			name,
+			email,
+			password,
+			created_at
+		FROM
+			users 
+		WHERE
+			id = $1
+			AND is_deleted = false
+	`
+	var user userentity.User
+	var createdAt time.Time
+	err := r.DB.QueryRow(ctx, query, userId).Scan(
+		&user.Id,
+		&user.Name,
+		&user.Email,
+		&user.Password,
+		&createdAt,
+	)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, usererror.ErrUserNotFound
+	}
+	if err != nil {
+		return nil, err
+	}
+	user.CreatedAt = createdAt.Format(time.RFC3339)
+	return &user, nil
 }

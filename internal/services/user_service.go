@@ -4,85 +4,84 @@ import (
 	"context"
 	"time"
 
-	auth_token_manager "github.com/danzbraham/cats-social/internal/commons/auth-token-manager"
-	user_exception "github.com/danzbraham/cats-social/internal/commons/exceptions/users"
-	password_hasher "github.com/danzbraham/cats-social/internal/commons/password-hasher"
-	user_entity "github.com/danzbraham/cats-social/internal/entities/user"
-
-	"github.com/danzbraham/cats-social/internal/repositories"
-
+	"github.com/danzBraham/cats-social/internal/entities/userentity"
+	"github.com/danzBraham/cats-social/internal/errors/usererror"
+	"github.com/danzBraham/cats-social/internal/helpers/bcrypt"
+	"github.com/danzBraham/cats-social/internal/helpers/jwt"
+	"github.com/danzBraham/cats-social/internal/repositories"
 	"github.com/oklog/ulid/v2"
 )
 
 type UserService interface {
-	RegisterUser(ctx context.Context, payload *user_entity.RegisterUserRequest) (*user_entity.RegisterUserResponse, error)
-	LoginUser(ctx context.Context, payload *user_entity.LoginUserRequest) (*user_entity.LoginUserResponse, error)
+	RegisterUser(ctx context.Context, payload *userentity.RegisterUserRequest) (*userentity.RegisterUserResponse, error)
+	LoginUser(ctx context.Context, payload *userentity.LoginUserRequest) (*userentity.LoginUserResponse, error)
 }
 
 type UserServiceImpl struct {
-	Repository repositories.UserRepository
+	UserRepository repositories.UserRepository
 }
 
-func NewUserService(repository repositories.UserRepository) UserService {
-	return &UserServiceImpl{Repository: repository}
+func NewUserService(userRepository repositories.UserRepository) UserService {
+	return &UserServiceImpl{UserRepository: userRepository}
 }
 
-func (s *UserServiceImpl) RegisterUser(ctx context.Context, payload *user_entity.RegisterUserRequest) (*user_entity.RegisterUserResponse, error) {
-	isEmailExists, err := s.Repository.VerifyEmail(ctx, payload.Email)
+func (s *UserServiceImpl) RegisterUser(ctx context.Context, payload *userentity.RegisterUserRequest) (*userentity.RegisterUserResponse, error) {
+	isEmailExists, err := s.UserRepository.IsEmailExists(ctx, payload.Email)
 	if err != nil {
 		return nil, err
 	}
 	if isEmailExists {
-		return nil, user_exception.ErrEmailAlreadyExists
+		return nil, usererror.ErrEmailAlreadyExists
 	}
 
-	hashedPassword, err := password_hasher.HashPassword(payload.Password)
+	hashedPassword, err := bcrypt.HashPassword(payload.Password)
 	if err != nil {
 		return nil, err
 	}
 
-	user := &user_entity.User{
+	user := &userentity.User{
 		Id:       ulid.Make().String(),
-		Email:    payload.Email,
 		Name:     payload.Name,
+		Email:    payload.Email,
 		Password: hashedPassword,
 	}
 
-	if err := s.Repository.CreateUser(ctx, user); err != nil {
-		return nil, err
-	}
-
-	accessToken, err := auth_token_manager.GenerateToken(2*time.Hour, user.Id)
+	err = s.UserRepository.CreateUser(ctx, user)
 	if err != nil {
 		return nil, err
 	}
 
-	return &user_entity.RegisterUserResponse{
+	token, err := jwt.GenerateToken(8*time.Hour, user.Id)
+	if err != nil {
+		return nil, err
+	}
+
+	return &userentity.RegisterUserResponse{
 		Name:        user.Name,
 		Email:       user.Email,
-		AccessToken: accessToken,
+		AccessToken: token,
 	}, nil
 }
 
-func (s *UserServiceImpl) LoginUser(ctx context.Context, payload *user_entity.LoginUserRequest) (*user_entity.LoginUserResponse, error) {
-	user, err := s.Repository.GetUserByEmail(ctx, payload.Email)
+func (s *UserServiceImpl) LoginUser(ctx context.Context, payload *userentity.LoginUserRequest) (*userentity.LoginUserResponse, error) {
+	user, err := s.UserRepository.GetUserByEmail(ctx, payload.Email)
 	if err != nil {
 		return nil, err
 	}
 
-	err = password_hasher.VerifyPassword(user.Password, payload.Password)
+	err = bcrypt.VerifyPassword(user.Password, payload.Password)
 	if err != nil {
-		return nil, user_exception.ErrInvalidPassword
+		return nil, usererror.ErrInvalidPassword
 	}
 
-	accessToken, err := auth_token_manager.GenerateToken(2*time.Hour, user.Id)
+	token, err := jwt.GenerateToken(8*time.Hour, user.Id)
 	if err != nil {
 		return nil, err
 	}
 
-	return &user_entity.LoginUserResponse{
+	return &userentity.LoginUserResponse{
 		Name:        user.Name,
 		Email:       user.Email,
-		AccessToken: accessToken,
+		AccessToken: token,
 	}, nil
 }

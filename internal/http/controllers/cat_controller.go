@@ -3,138 +3,153 @@ package controllers
 import (
 	"errors"
 	"net/http"
+	"strconv"
 
-	cat_exception "github.com/danzbraham/cats-social/internal/commons/exceptions/cats"
-	http_common "github.com/danzbraham/cats-social/internal/commons/http"
-	"github.com/danzbraham/cats-social/internal/commons/validator"
-	cat_entity "github.com/danzbraham/cats-social/internal/entities/cat"
-	"github.com/danzbraham/cats-social/internal/http/middlewares"
-	"github.com/danzbraham/cats-social/internal/services"
+	"github.com/danzBraham/cats-social/internal/entities/catentity"
+	"github.com/danzBraham/cats-social/internal/errors/autherror"
+	"github.com/danzBraham/cats-social/internal/errors/caterror"
+	"github.com/danzBraham/cats-social/internal/helpers/httphelper"
+	"github.com/danzBraham/cats-social/internal/http/middlewares"
+	"github.com/danzBraham/cats-social/internal/services"
 	"github.com/go-chi/chi/v5"
 )
 
-type CatController struct {
-	Service services.CatService
+type CatController interface {
+	HandleCreateCat(w http.ResponseWriter, r *http.Request)
+	HandleGetCats(w http.ResponseWriter, r *http.Request)
+	HandleUpdateCatById(w http.ResponseWriter, r *http.Request)
+	HandleDeleteCatById(w http.ResponseWriter, r *http.Request)
 }
 
-func NewCatController(service services.CatService) *CatController {
-	return &CatController{Service: service}
+type CatControllerImpl struct {
+	CatService services.CatService
 }
 
-func (c *CatController) Routes() chi.Router {
-	r := chi.NewRouter()
-
-	r.Post("/", c.handleAddCat)
-	r.Get("/", c.handleGetCats)
-	r.Put("/{catId}", c.handleUpdateCat)
-	r.Delete("/{catId}", c.handleDeleteCat)
-
-	return r
+func NewCatController(catService services.CatService) CatController {
+	return &CatControllerImpl{CatService: catService}
 }
 
-func (c *CatController) handleAddCat(w http.ResponseWriter, r *http.Request) {
+func (c *CatControllerImpl) HandleCreateCat(w http.ResponseWriter, r *http.Request) {
 	userId, ok := r.Context().Value(middlewares.ContextUserIdKey).(string)
 	if !ok {
-		http_common.ResponseError(w, http.StatusBadRequest, "User Id type assertion failed", "User Id not found in context")
-		return
-	}
-	payload := &cat_entity.AddCatRequest{OwnerId: userId}
-
-	if err := http_common.DecodeJSON(r, payload); err != nil {
-		http_common.ResponseError(w, http.StatusBadRequest, err.Error(), "Failed to decode JSON")
+		httphelper.ErrorResponse(w, http.StatusUnauthorized, autherror.ErrUserIdNotFoundInTheContext)
 		return
 	}
 
-	if err := validator.ValidatePayload(payload); err != nil {
-		http_common.ResponseError(w, http.StatusBadRequest, err.Error(), "Request doesn't pass validation")
-		return
-	}
-
-	catResponse, err := c.Service.AddCat(r.Context(), payload)
+	payload := &catentity.CreateCatRequest{}
+	err := httphelper.DecodeAndValidate(w, r, payload)
 	if err != nil {
-		http_common.ResponseError(w, http.StatusInternalServerError, "Internal server error", err.Error())
 		return
 	}
 
-	http_common.ResponseSuccess(w, http.StatusCreated, "successfully add cat", catResponse)
+	catResponse, err := c.CatService.CreateCat(r.Context(), userId, payload)
+	if err != nil {
+		httphelper.ErrorResponse(w, http.StatusInternalServerError, err)
+		return
+	}
+
+	httphelper.SuccessResponse(w, http.StatusCreated, "success", catResponse)
 }
 
-func (c *CatController) handleGetCats(w http.ResponseWriter, r *http.Request) {
+func (c *CatControllerImpl) HandleGetCats(w http.ResponseWriter, r *http.Request) {
 	userId, ok := r.Context().Value(middlewares.ContextUserIdKey).(string)
 	if !ok {
-		http_common.ResponseError(w, http.StatusBadRequest, "User Id type assertion failed", "User Id not found in context")
+		httphelper.ErrorResponse(w, http.StatusUnauthorized, autherror.ErrUserIdNotFoundInTheContext)
 		return
 	}
-	query := r.URL.Query()
 
-	params := &cat_entity.CatQueryParams{
+	query := r.URL.Query()
+	params := &catentity.CatQueryParams{
 		Id:         query.Get("id"),
-		Limit:      "5",
-		Offset:     "0",
-		Race:       query.Get("race"),
-		Sex:        query.Get("sex"),
-		HasMatched: query.Get("hasMatched"),
+		Limit:      5,
+		Offset:     0,
+		Race:       catentity.Race(query.Get("race")),
+		Sex:        catentity.Sex(query.Get("sex")),
 		AgeInMonth: query.Get("ageInMonth"),
-		Owned:      query.Get("owned"),
 		Search:     query.Get("search"),
 	}
 
 	if limit := query.Get("limit"); limit != "" {
-		params.Limit = limit
+		params.Limit, _ = strconv.Atoi(limit)
 	}
 
 	if offset := query.Get("offset"); offset != "" {
-		params.Offset = offset
+		params.Offset, _ = strconv.Atoi(offset)
 	}
 
-	catsResponse, err := c.Service.GetCats(r.Context(), userId, params)
+	if hasMatched := query.Get("hasMatched"); hasMatched != "" {
+		params.HasMatched, _ = strconv.ParseBool(hasMatched)
+	}
+
+	if owned := query.Get("owned"); owned != "" {
+		params.Owned, _ = strconv.ParseBool(owned)
+	}
+
+	catResponses, err := c.CatService.GetCats(r.Context(), userId, params)
 	if err != nil {
-		http_common.ResponseError(w, http.StatusInternalServerError, "Internal server error", err.Error())
+		httphelper.ErrorResponse(w, http.StatusInternalServerError, err)
 		return
 	}
 
-	http_common.ResponseSuccess(w, http.StatusOK, "successfully get cats", catsResponse)
+	httphelper.SuccessResponse(w, http.StatusOK, "success", catResponses)
 }
 
-func (c *CatController) handleUpdateCat(w http.ResponseWriter, r *http.Request) {
-	catId := chi.URLParam(r, "catId")
-	payload := &cat_entity.UpdateCatRequest{}
-
-	if err := http_common.DecodeJSON(r, payload); err != nil {
-		http_common.ResponseError(w, http.StatusBadRequest, err.Error(), "Failed to decode JSON")
+func (c *CatControllerImpl) HandleUpdateCatById(w http.ResponseWriter, r *http.Request) {
+	userId, ok := r.Context().Value(middlewares.ContextUserIdKey).(string)
+	if !ok {
+		httphelper.ErrorResponse(w, http.StatusUnauthorized, autherror.ErrUserIdNotFoundInTheContext)
 		return
 	}
 
-	if err := validator.ValidatePayload(payload); err != nil {
-		http_common.ResponseError(w, http.StatusBadRequest, err.Error(), "Request doesn't pass validation")
+	payload := &catentity.UpdateCatRequest{}
+	err := httphelper.DecodeAndValidate(w, r, payload)
+	if err != nil {
 		return
 	}
 
-	err := c.Service.UpdateCat(r.Context(), catId, payload)
-	if errors.Is(err, cat_exception.ErrCatIdIsNotFound) {
-		http_common.ResponseError(w, http.StatusNotFound, "Not found error", err.Error())
+	catId := chi.URLParam(r, "id")
+	err = c.CatService.UpdateCatById(r.Context(), userId, catId, payload)
+	if errors.Is(err, caterror.ErrCatIdNotFound) {
+		httphelper.ErrorResponse(w, http.StatusNotFound, err)
+		return
+	}
+	if errors.Is(err, caterror.ErrNotCatOwner) {
+		httphelper.ErrorResponse(w, http.StatusForbidden, err)
+		return
+	}
+	if errors.Is(err, caterror.ErrSexIsEdited) {
+		httphelper.ErrorResponse(w, http.StatusBadRequest, err)
 		return
 	}
 	if err != nil {
-		http_common.ResponseError(w, http.StatusInternalServerError, "Internal server error", err.Error())
+		httphelper.ErrorResponse(w, http.StatusInternalServerError, err)
 		return
 	}
 
-	http_common.ResponseSuccess(w, http.StatusOK, "successfully update cat", nil)
+	httphelper.SuccessResponse(w, http.StatusOK, "successfully update cat", nil)
 }
 
-func (c *CatController) handleDeleteCat(w http.ResponseWriter, r *http.Request) {
-	catId := chi.URLParam(r, "catId")
+func (c *CatControllerImpl) HandleDeleteCatById(w http.ResponseWriter, r *http.Request) {
+	userId, ok := r.Context().Value(middlewares.ContextUserIdKey).(string)
+	if !ok {
+		httphelper.ErrorResponse(w, http.StatusUnauthorized, autherror.ErrUserIdNotFoundInTheContext)
+		return
+	}
 
-	err := c.Service.DeleteCat(r.Context(), catId)
-	if errors.Is(err, cat_exception.ErrCatIdIsNotFound) {
-		http_common.ResponseError(w, http.StatusNotFound, "Not found error", err.Error())
+	catId := chi.URLParam(r, "id")
+	err := c.CatService.DeleteCatById(r.Context(), userId, catId)
+	if errors.Is(err, caterror.ErrCatIdNotFound) {
+		httphelper.ErrorResponse(w, http.StatusNotFound, err)
+		return
+	}
+	if errors.Is(err, caterror.ErrNotCatOwner) {
+		httphelper.ErrorResponse(w, http.StatusForbidden, err)
 		return
 	}
 	if err != nil {
-		http_common.ResponseError(w, http.StatusInternalServerError, "Internal server error", err.Error())
+		httphelper.ErrorResponse(w, http.StatusInternalServerError, err)
 		return
 	}
 
-	http_common.ResponseSuccess(w, http.StatusOK, "successfully delete cat", nil)
+	httphelper.SuccessResponse(w, http.StatusOK, "successfully delete cat", nil)
 }

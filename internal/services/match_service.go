@@ -2,95 +2,104 @@ package services
 
 import (
 	"context"
-	"log"
 
-	match_exception "github.com/danzbraham/cats-social/internal/commons/exceptions/match"
-	match_entity "github.com/danzbraham/cats-social/internal/entities/match"
-	"github.com/danzbraham/cats-social/internal/repositories"
+	"github.com/danzBraham/cats-social/internal/entities/matchentity"
+	"github.com/danzBraham/cats-social/internal/errors/matcherror"
+	"github.com/danzBraham/cats-social/internal/repositories"
 	"github.com/oklog/ulid/v2"
 )
 
 type MatchService interface {
-	RequestMatchCat(ctx context.Context, payload *match_entity.MatchCatRequest) error
-	GetMatchCatRequests(ctx context.Context) ([]*match_entity.GetMatchCatResponse, error)
-	ApproveMatchCatRequest(ctx context.Context, payload *match_entity.DecisionMatchRequest) error
-	RejectMatchCatRequest(ctx context.Context, payload *match_entity.DecisionMatchRequest) error
-	DeleteMatchCatRequest(ctx context.Context, payload *match_entity.DeleteMatchCatRequest) error
+	CreateMatch(ctx context.Context, userId string, payload *matchentity.CreateMatchRequest) error
+	GetMatches(ctx context.Context, userId string) ([]*matchentity.GetMatchResponse, error)
+	ApproveMatch(ctx context.Context, userId string, payload *matchentity.ApproveMatchRequest) error
+	RejectMatch(ctx context.Context, userId string, payload *matchentity.RejectMatchRequest) error
+	DeleteMatch(ctx context.Context, userId, matchId string) error
 }
 
 type MatchServiceImpl struct {
-	CatRepository   repositories.CatRepository
 	MatchRepository repositories.MatchRepository
+	CatRepository   repositories.CatRepository
+	UserRepository  repositories.UserRepository
 }
 
-func NewMatchService(catRepository repositories.CatRepository, matchRepository repositories.MatchRepository) MatchService {
+func NewMatchService(
+	matchRepository repositories.MatchRepository,
+	catRepository repositories.CatRepository,
+	userRepository repositories.UserRepository,
+) MatchService {
 	return &MatchServiceImpl{
-		CatRepository:   catRepository,
 		MatchRepository: matchRepository,
+		CatRepository:   catRepository,
+		UserRepository:  userRepository,
 	}
 }
 
-func (s *MatchServiceImpl) RequestMatchCat(ctx context.Context, payload *match_entity.MatchCatRequest) error {
-	isMatchCatIdExists, err := s.CatRepository.VerifyId(ctx, payload.MatchCatId)
+func (s *MatchServiceImpl) CreateMatch(ctx context.Context, userId string, payload *matchentity.CreateMatchRequest) error {
+	isMatchCatIdExists, err := s.CatRepository.IsCatIdExists(ctx, payload.MatchCatId)
 	if err != nil {
 		return err
 	}
 	if !isMatchCatIdExists {
-		return match_exception.ErrMatchCatIdIsNotFound
+		return matcherror.ErrMatchCatIdNotFound
 	}
 
-	isUserCatIdExists, err := s.CatRepository.VerifyId(ctx, payload.UserCatId)
+	isUserCatIdExists, err := s.CatRepository.IsCatIdExists(ctx, payload.UserCatId)
 	if err != nil {
 		return err
 	}
 	if !isUserCatIdExists {
-		return match_exception.ErrUserCatIdIsNotFound
+		return matcherror.ErrUserCatIdNotFound
 	}
 
-	issuerCat, err := s.CatRepository.GetCatByOwnerId(ctx, payload.Issuer)
+	IsCatOwner, err := s.CatRepository.IsCatOwner(ctx, payload.UserCatId, userId)
 	if err != nil {
 		return err
 	}
-
-	log.Println(payload.UserCatId)
-	log.Println(issuerCat.Name)
-
-	if payload.UserCatId != issuerCat.Id {
-		return match_exception.ErrUserCatIdNotBelongTheUser
+	if !IsCatOwner {
+		return matcherror.ErrUserCatIdNotBelongToTheUser
 	}
 
-	matchCat, err := s.CatRepository.GetCatById(ctx, payload.MatchCatId)
+	isBothCatsHaveSameGender, err := s.MatchRepository.IsBothCatsHaveSameGender(ctx, payload.MatchCatId, payload.UserCatId)
 	if err != nil {
 		return err
 	}
+	if isBothCatsHaveSameGender {
+		return matcherror.ErrBothCatsHaveSameGender
+	}
 
-	userCat, err := s.CatRepository.GetCatById(ctx, payload.UserCatId)
+	isBothCatsAlreadyMatched, err := s.MatchRepository.IsBothCatsAlreadyMatched(ctx, payload.MatchCatId, payload.UserCatId)
 	if err != nil {
 		return err
 	}
-
-	if matchCat.Sex == userCat.Sex {
-		return match_exception.ErrBothCatHaveSameGender
+	if isBothCatsAlreadyMatched {
+		return matcherror.ErrBothCatsHaveAlreadyMatched
 	}
 
-	if matchCat.HasMatched && userCat.HasMatched {
-		return match_exception.ErrBothCatAlreadyMatched
+	isOwnerOfBothCats, err := s.MatchRepository.IsOwnerOfBothCats(ctx, payload.MatchCatId, payload.UserCatId)
+	if err != nil {
+		return err
+	}
+	if isOwnerOfBothCats {
+		return matcherror.ErrBothCatsHaveSameOwner
 	}
 
-	if matchCat.OwnerId == userCat.OwnerId {
-		return match_exception.ErrBothCatsHaveTheSameOwner
+	isMatchRequestExists, err := s.MatchRepository.IsMatchRequestExists(ctx, payload.MatchCatId, payload.UserCatId)
+	if err != nil {
+		return err
+	}
+	if isMatchRequestExists {
+		return matcherror.ErrMatchRequestAlreadyExists
 	}
 
-	createMatchCat := &match_entity.MatchCat{
+	matchCat := &matchentity.Match{
 		Id:         ulid.Make().String(),
 		MatchCatId: payload.MatchCatId,
 		UserCatId:  payload.UserCatId,
 		Message:    payload.Message,
-		Status:     match_entity.Pending,
-		IssuedBy:   payload.Issuer,
 	}
 
-	err = s.MatchRepository.CreateMatchCatRequest(ctx, createMatchCat)
+	err = s.MatchRepository.CreateMatch(ctx, matchCat)
 	if err != nil {
 		return err
 	}
@@ -98,23 +107,36 @@ func (s *MatchServiceImpl) RequestMatchCat(ctx context.Context, payload *match_e
 	return nil
 }
 
-func (s *MatchServiceImpl) GetMatchCatRequests(ctx context.Context) ([]*match_entity.GetMatchCatResponse, error) {
-	return s.MatchRepository.GetMatchCatRequests(ctx)
+func (s *MatchServiceImpl) GetMatches(ctx context.Context, userId string) ([]*matchentity.GetMatchResponse, error) {
+	return s.MatchRepository.GetMatches(ctx, userId)
 }
 
-func (s *MatchServiceImpl) ApproveMatchCatRequest(ctx context.Context, payload *match_entity.DecisionMatchRequest) error {
-	isIdExists, isDeleted, err := s.MatchRepository.VerifyId(ctx, payload.MatchId)
+func (s *MatchServiceImpl) ApproveMatch(ctx context.Context, userId string, payload *matchentity.ApproveMatchRequest) error {
+	isMatchIdExists, err := s.MatchRepository.IsMatchIdExists(ctx, payload.MatchId)
 	if err != nil {
 		return err
 	}
-	if !isIdExists {
-		return match_exception.ErrMatchIdIsNotFound
-	}
-	if isDeleted {
-		return match_exception.ErrMatchIdIsNoLongerValid
+	if !isMatchIdExists {
+		return matcherror.ErrMatchIdNotFound
 	}
 
-	err = s.MatchRepository.ApproveMatchCatRequest(ctx, payload.MatchId)
+	isMatchIdValid, err := s.MatchRepository.IsMatchIdValid(ctx, payload.MatchId)
+	if err != nil {
+		return err
+	}
+	if !isMatchIdValid {
+		return matcherror.ErrMatchIdIsNoLongerValid
+	}
+
+	isMatchIssuer, err := s.MatchRepository.IsMatchIssuer(ctx, payload.MatchId, userId)
+	if err != nil {
+		return err
+	}
+	if isMatchIssuer {
+		return matcherror.ErrIssuerCannotDecide
+	}
+
+	err = s.MatchRepository.ApproveMatch(ctx, payload.MatchId)
 	if err != nil {
 		return err
 	}
@@ -122,19 +144,32 @@ func (s *MatchServiceImpl) ApproveMatchCatRequest(ctx context.Context, payload *
 	return nil
 }
 
-func (s *MatchServiceImpl) RejectMatchCatRequest(ctx context.Context, payload *match_entity.DecisionMatchRequest) error {
-	isIdExists, isDeleted, err := s.MatchRepository.VerifyId(ctx, payload.MatchId)
+func (s *MatchServiceImpl) RejectMatch(ctx context.Context, userId string, payload *matchentity.RejectMatchRequest) error {
+	isMatchIdExists, err := s.MatchRepository.IsMatchIdExists(ctx, payload.MatchId)
 	if err != nil {
 		return err
 	}
-	if !isIdExists {
-		return match_exception.ErrMatchIdIsNotFound
-	}
-	if isDeleted {
-		return match_exception.ErrMatchIdIsNoLongerValid
+	if !isMatchIdExists {
+		return matcherror.ErrMatchIdNotFound
 	}
 
-	err = s.MatchRepository.RejectMatchCatRequest(ctx, payload.MatchId)
+	isMatchIdValid, err := s.MatchRepository.IsMatchIdValid(ctx, payload.MatchId)
+	if err != nil {
+		return err
+	}
+	if !isMatchIdValid {
+		return matcherror.ErrMatchIdIsNoLongerValid
+	}
+
+	isMatchIssuer, err := s.MatchRepository.IsMatchIssuer(ctx, payload.MatchId, userId)
+	if err != nil {
+		return err
+	}
+	if isMatchIssuer {
+		return matcherror.ErrIssuerCannotDecide
+	}
+
+	err = s.MatchRepository.RejectMatch(ctx, payload.MatchId)
 	if err != nil {
 		return err
 	}
@@ -142,35 +177,32 @@ func (s *MatchServiceImpl) RejectMatchCatRequest(ctx context.Context, payload *m
 	return nil
 }
 
-func (s *MatchServiceImpl) DeleteMatchCatRequest(ctx context.Context, payload *match_entity.DeleteMatchCatRequest) error {
-	isIssuer, err := s.MatchRepository.VerifyIssuer(ctx, payload.Issuer)
+func (s *MatchServiceImpl) DeleteMatch(ctx context.Context, userId, matchId string) error {
+	isMatchIdExists, err := s.MatchRepository.IsMatchIdExists(ctx, matchId)
 	if err != nil {
 		return err
 	}
-	if !isIssuer {
-		return nil
+	if !isMatchIdExists {
+		return matcherror.ErrMatchIdNotFound
 	}
 
-	isIdExists, isDeleted, err := s.MatchRepository.VerifyId(ctx, payload.MatchId)
+	isMatchIdValid, err := s.MatchRepository.IsMatchIdValid(ctx, matchId)
 	if err != nil {
 		return err
 	}
-	if !isIdExists {
-		return match_exception.ErrMatchIdIsNotFound
-	}
-	if isDeleted {
-		return match_exception.ErrMatchIdIsNoLongerValid
+	if !isMatchIdValid {
+		return matcherror.ErrMatchIdIsNoLongerValid
 	}
 
-	isPending, err := s.MatchRepository.VerifyStatus(ctx, payload.MatchId)
+	isMatchIssuer, err := s.MatchRepository.IsMatchIssuer(ctx, matchId, userId)
 	if err != nil {
 		return err
 	}
-	if !isPending {
-		return match_exception.ErrMatchIdIsAlreadyApprovedOrRejected
+	if !isMatchIssuer {
+		return matcherror.ErrNotIssuer
 	}
 
-	err = s.MatchRepository.DeleteMatchCatRequest(ctx, payload.MatchId)
+	err = s.MatchRepository.DeleteMatch(ctx, matchId)
 	if err != nil {
 		return err
 	}

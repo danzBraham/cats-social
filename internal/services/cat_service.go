@@ -3,29 +3,33 @@ package services
 import (
 	"context"
 
-	cat_exception "github.com/danzbraham/cats-social/internal/commons/exceptions/cats"
-	cat_entity "github.com/danzbraham/cats-social/internal/entities/cat"
-	"github.com/danzbraham/cats-social/internal/repositories"
+	"github.com/danzBraham/cats-social/internal/entities/catentity"
+	"github.com/danzBraham/cats-social/internal/errors/caterror"
+	"github.com/danzBraham/cats-social/internal/repositories"
 	"github.com/oklog/ulid/v2"
 )
 
 type CatService interface {
-	AddCat(ctx context.Context, payload *cat_entity.AddCatRequest) (*cat_entity.AddCatResponse, error)
-	GetCats(ctx context.Context, userId string, params *cat_entity.CatQueryParams) ([]*cat_entity.GetCatReponse, error)
-	UpdateCat(ctx context.Context, id string, payload *cat_entity.UpdateCatRequest) error
-	DeleteCat(ctx context.Context, id string) error
+	CreateCat(ctx context.Context, userId string, payload *catentity.CreateCatRequest) (*catentity.CreateCatResponse, error)
+	GetCats(ctx context.Context, userId string, params *catentity.CatQueryParams) ([]*catentity.GetCatResponse, error)
+	UpdateCatById(ctx context.Context, userId, catId string, payload *catentity.UpdateCatRequest) error
+	DeleteCatById(ctx context.Context, userId, catId string) error
 }
 
 type CatServiceImpl struct {
-	Repository repositories.CatRepository
+	CatRepository   repositories.CatRepository
+	MatchRepository repositories.MatchRepository
 }
 
-func NewCatService(repository repositories.CatRepository) CatService {
-	return &CatServiceImpl{Repository: repository}
+func NewCatService(catRepository repositories.CatRepository, matchRepository repositories.MatchRepository) CatService {
+	return &CatServiceImpl{
+		CatRepository:   catRepository,
+		MatchRepository: matchRepository,
+	}
 }
 
-func (s *CatServiceImpl) AddCat(ctx context.Context, payload *cat_entity.AddCatRequest) (*cat_entity.AddCatResponse, error) {
-	cat := &cat_entity.Cat{
+func (s *CatServiceImpl) CreateCat(ctx context.Context, userId string, payload *catentity.CreateCatRequest) (*catentity.CreateCatResponse, error) {
+	cat := &catentity.Cat{
 		Id:          ulid.Make().String(),
 		Name:        payload.Name,
 		Race:        payload.Race,
@@ -33,34 +37,59 @@ func (s *CatServiceImpl) AddCat(ctx context.Context, payload *cat_entity.AddCatR
 		AgeInMonth:  payload.AgeInMonth,
 		Description: payload.Description,
 		ImageUrls:   payload.ImageUrls,
-		OwnerId:     payload.OwnerId,
+		OwnerId:     userId,
 	}
 
-	createdAt, err := s.Repository.CreateCat(ctx, cat)
+	createdAt, err := s.CatRepository.CreateCat(ctx, cat)
 	if err != nil {
 		return nil, err
 	}
 
-	return &cat_entity.AddCatResponse{
+	return &catentity.CreateCatResponse{
 		Id:        cat.Id,
 		CreatedAt: createdAt,
 	}, nil
 }
 
-func (s *CatServiceImpl) GetCats(ctx context.Context, userId string, params *cat_entity.CatQueryParams) ([]*cat_entity.GetCatReponse, error) {
-	return s.Repository.GetCats(ctx, userId, params)
+func (s *CatServiceImpl) GetCats(ctx context.Context, userId string, params *catentity.CatQueryParams) ([]*catentity.GetCatResponse, error) {
+	return s.CatRepository.GetCats(ctx, userId, params)
 }
 
-func (s *CatServiceImpl) UpdateCat(ctx context.Context, id string, payload *cat_entity.UpdateCatRequest) error {
-	isIdExists, err := s.Repository.VerifyId(ctx, id)
+func (s *CatServiceImpl) UpdateCatById(ctx context.Context, userId, catId string, payload *catentity.UpdateCatRequest) error {
+	IsCatIdExists, err := s.CatRepository.IsCatIdExists(ctx, catId)
 	if err != nil {
 		return err
 	}
-	if !isIdExists {
-		return cat_exception.ErrCatIdIsNotFound
+	if !IsCatIdExists {
+		return caterror.ErrCatIdNotFound
 	}
 
-	err = s.Repository.UpdateCatById(ctx, id, payload)
+	isCatOwner, err := s.CatRepository.IsCatOwner(ctx, catId, userId)
+	if err != nil {
+		return err
+	}
+	if !isCatOwner {
+		return caterror.ErrNotCatOwner
+	}
+
+	isMatchRequestExists, err := s.MatchRepository.IsMatchRequestExists(ctx, catId, catId)
+	if err != nil {
+		return err
+	}
+	if isMatchRequestExists {
+		return caterror.ErrSexIsEdited
+	}
+
+	cat := &catentity.Cat{
+		Name:        payload.Name,
+		Race:        payload.Race,
+		Sex:         payload.Sex,
+		AgeInMonth:  payload.AgeInMonth,
+		Description: payload.Description,
+		ImageUrls:   payload.ImageUrls,
+	}
+
+	err = s.CatRepository.UpdateCatById(ctx, catId, cat)
 	if err != nil {
 		return err
 	}
@@ -68,16 +97,24 @@ func (s *CatServiceImpl) UpdateCat(ctx context.Context, id string, payload *cat_
 	return nil
 }
 
-func (s *CatServiceImpl) DeleteCat(ctx context.Context, id string) error {
-	isIdExists, err := s.Repository.VerifyId(ctx, id)
+func (s *CatServiceImpl) DeleteCatById(ctx context.Context, userId, catId string) error {
+	IsCatIdExists, err := s.CatRepository.IsCatIdExists(ctx, catId)
 	if err != nil {
 		return err
 	}
-	if !isIdExists {
-		return cat_exception.ErrCatIdIsNotFound
+	if !IsCatIdExists {
+		return caterror.ErrCatIdNotFound
 	}
 
-	err = s.Repository.DeleteCatById(ctx, id)
+	isCatOwner, err := s.CatRepository.IsCatOwner(ctx, catId, userId)
+	if err != nil {
+		return err
+	}
+	if !isCatOwner {
+		return caterror.ErrNotCatOwner
+	}
+
+	err = s.CatRepository.DeleteCatById(ctx, catId)
 	if err != nil {
 		return err
 	}
