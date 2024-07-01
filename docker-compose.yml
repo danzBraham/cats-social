@@ -1,0 +1,76 @@
+name: cats-social-restful-api
+
+services:
+  db:
+    image: postgres
+    restart: always
+    container_name: cats-social-pg
+    hostname: cats-social-pg-host
+    networks:
+      - cats-social-pg-net
+    ports:
+      - 5432:5432
+    volumes:
+      - pg-data:/var/lib/postgresql/data
+    environment:
+      - POSTGRES_DB=${DB_NAME}
+      - POSTGRES_USER=${DB_USERNAME}
+      - POSTGRES_PASSWORD=${DB_PASSWORD}
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U ${DB_USERNAME}']
+      interval: 1m30s
+      timeout: 30s
+      retries: 5
+
+  migrate:
+    image: migrate/migrate
+    depends_on:
+      db:
+        condition: service_healthy
+    container_name: cats-social-migrate
+    networks:
+      - cats-social-pg-net
+    volumes:
+      - ./db/migrations:/migrations
+    command:
+      [
+        '-database',
+        'postgres://${DB_USERNAME}:${DB_PASSWORD}@${DB_HOST}:${DB_PORT}/${DB_NAME}?${DB_PARAMS}',
+        '-path',
+        '/migrations',
+        '-verbose',
+        'up',
+      ]
+
+  server:
+    depends_on:
+      db:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    build:
+      context: .
+    restart: on-failure
+    container_name: cats-social-server
+    hostname: cats-social-server
+    networks:
+      - cats-social-pg-net
+    ports:
+      - 8080:8080
+    environment:
+      - APP_PORT=${APP_PORT}
+      - DB_NAME=${DB_NAME}
+      - DB_PORT=${DB_PORT}
+      - DB_HOST=${DB_HOST}
+      - DB_USERNAME=${DB_USERNAME}
+      - DB_PASSWORD=${DB_PASSWORD}
+      - DB_PARAMS=${DB_PARAMS}
+      - JWT_SECRET=${JWT_SECRET}
+      - BCRYPT_SALT=${BCRYPT_SALT}
+
+volumes:
+  pg-data:
+
+networks:
+  cats-social-pg-net:
+    driver: bridge

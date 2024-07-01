@@ -6,14 +6,10 @@ import (
 
 	"github.com/danzBraham/cats-social/internal/database"
 	"github.com/danzBraham/cats-social/internal/http"
-	"github.com/joho/godotenv"
+	_ "github.com/joho/godotenv"
 )
 
 func main() {
-	if err := godotenv.Load(); err != nil {
-		log.Fatal("error loading .env file")
-	}
-
 	addr := ":" + os.Getenv("APP_PORT")
 	pool, err := database.Connect()
 	if err != nil {
