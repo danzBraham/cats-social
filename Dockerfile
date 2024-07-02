@@ -9,7 +9,7 @@ COPY go.mod go.sum ./
 RUN go mod download && go mod verify
 
 COPY . ./
-RUN CGO_ENABLED=0 GOOS=linux go build -o /cats-social cmd/api/main.go
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o /cats-social cmd/api/main.go
 
 # deploy the app binary into a lean image
 FROM gcr.io/distroless/static-debian12
