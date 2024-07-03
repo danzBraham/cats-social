@@ -41,10 +41,10 @@ clean: migrate-down
 docker-up:
 	@docker compose up --build -d
 
-.PHONY: docker-stop-down
-docker-stop-down:
+.PHONY: docker-down
+docker-down:
 	@docker compose stop && docker compose down
 
-.PHONY: docker-stop-down-volumes
-docker-stop-down-volumes:
+.PHONY: docker-down-volumes
+docker-down-volumes:
 	@docker compose stop && docker compose down --volumes

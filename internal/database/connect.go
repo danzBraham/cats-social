@@ -24,8 +24,8 @@ func Connect() (*pgxpool.Pool, error) {
 		return nil, err
 	}
 
-	config.MinConns = 10
-	config.MaxConns = 40
+	config.MinConns = 40
+	config.MaxConns = 80
 	config.MaxConnIdleTime = 10 * time.Minute
 	config.MaxConnLifetime = 60 * time.Minute
 

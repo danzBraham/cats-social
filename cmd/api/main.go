@@ -6,7 +6,7 @@ import (
 
 	"github.com/danzBraham/cats-social/internal/database"
 	"github.com/danzBraham/cats-social/internal/http"
-	_ "github.com/joho/godotenv"
+	_ "github.com/joho/godotenv/autoload"
 )
 
 func main() {
