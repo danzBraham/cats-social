@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:1
 
 # build the app
-FROM golang:1.22.5 AS builder
+FROM golang:1.22.5 AS build
 
 WORKDIR /app
 
@@ -16,7 +16,7 @@ FROM gcr.io/distroless/static-debian12
 
 WORKDIR /
 
-COPY --from=builder /cats-social /cats-social
+COPY --from=build /cats-social /cats-social
 
 EXPOSE 8080
 
