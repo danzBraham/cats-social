@@ -2,7 +2,6 @@ package main
 
 import (
 	"log"
-	"os"
 
 	"github.com/danzBraham/cats-social/internal/database"
 	"github.com/danzBraham/cats-social/internal/http"
@@ -10,7 +9,7 @@ import (
 )
 
 func main() {
-	addr := ":" + os.Getenv("APP_PORT")
+	addr := ":8080"
 	pool, err := database.Connect()
 	if err != nil {
 		log.Fatalf("failed to connect to the database: %v", err)

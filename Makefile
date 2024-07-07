@@ -3,7 +3,7 @@ all: migrate-up run
 
 .PHONY: build
 build:
-	@go build -o bin/cats-social cmd/api/main.go
+	@CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o bin/cats-social cmd/api/main.go
 
 .PHONY: run
 run: build
