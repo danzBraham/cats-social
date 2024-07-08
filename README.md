@@ -48,7 +48,7 @@ export BCRYPT_SALT=8 # don't use 8 in prod! use > 10
 Run docker
 
 ```bash
-docker compose up --build -d
+docker compose pull && docker compose up --build -d
 ```
 
 ## API Reference
@@ -57,5 +57,4 @@ For a detailed API reference, check out the [API Reference](./api-reference.md).
 
 ## Feedback
 
-If you have any feedback, please dm me at
-[![x](https://img.shields.io/badge/danzBraham-x?style=for-the-badge&logo=x&logoColor=x&logoSize=auto&labelColor=auto&color=black)](https://x.com/danzBraham)
+If you have any feedback, please dm me at [![x](https://img.shields.io/badge/danzBraham-x?style=for-the-badge&logo=x&logoColor=x&logoSize=auto&labelColor=auto&color=black)](https://x.com/danzBraham)

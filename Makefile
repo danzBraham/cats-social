@@ -39,7 +39,7 @@ clean: migrate-down
 
 .PHONY: docker-up
 docker-up:
-	@docker compose up --build -d
+	@docker compose pull && docker compose up --build -d
 
 .PHONY: docker-down
 docker-down:
