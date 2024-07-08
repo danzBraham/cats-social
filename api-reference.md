@@ -1,4 +1,3 @@
-
 # Cats Social API Reference
 
 Welcome to the Cats Social API! This API allows cat owners to manage their cats and match them with other cats. Below are the available endpoints and their respective functionalities.
@@ -68,6 +67,7 @@ Response:
 - `400` if password is wrong
 - `400` request doesn’t pass validation
 - `500` if server error
+
 ## Managing Cats
 
 > [!WARNING]
