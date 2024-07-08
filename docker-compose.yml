@@ -5,7 +5,7 @@ services:
     image: postgres:16.3
     restart: always
     container_name: cats-social-pg
-    hostname: cats-social-pg-host
+    hostname: ${DB_HOST}
     networks:
       - cats-social-pg-net
     ports:
