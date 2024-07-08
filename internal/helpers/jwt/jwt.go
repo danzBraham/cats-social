@@ -44,9 +44,6 @@ func VerifyToken(tokenString string) (*JWTPayload, error) {
 		}
 		return key, nil
 	})
-	if token == nil {
-		return nil, autherror.ErrMissingToken
-	}
 	if err != nil {
 		return nil, autherror.ErrInvalidToken
 	}

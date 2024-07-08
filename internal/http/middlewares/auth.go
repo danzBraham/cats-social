@@ -22,11 +22,13 @@ func Auth(next http.Handler) http.Handler {
 			return
 		}
 
-		tokenString := strings.TrimPrefix(authHeader, "Bearer ")
-		if tokenString == "" {
+		authFields := strings.Fields(authHeader)
+		if len(authFields) < 2 || authFields[0] != "Bearer" {
 			httphelper.ErrorResponse(w, http.StatusUnauthorized, autherror.ErrInvalidAuthHeader)
 			return
 		}
+
+		tokenString := authFields[1]
 
 		token, err := jwt.VerifyToken(tokenString)
 		if err != nil {
