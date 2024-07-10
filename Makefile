@@ -7,7 +7,7 @@ build:
 
 .PHONY: run
 run: build
-	@./bin/cats-social
+	@bin/cats-social
 
 .PHONY: create-migration
 create-migration:
