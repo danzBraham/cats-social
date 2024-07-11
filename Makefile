@@ -33,7 +33,7 @@ migrate-version:
 migrate-force:
 	@migrate -database "postgres://$(DB_USERNAME):$(DB_PASSWORD)@$(DB_HOST):$(DB_PORT)/$(DB_NAME)?$(DB_PARAMS)" -path db/migrations force $(MIGRATE_VERSION)
 
-.PHONY: migrate-clean
+.PHONY: clean
 clean: migrate-down
 	@rm -rf bin/
 
