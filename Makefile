@@ -34,7 +34,7 @@ migrate-force:
 	@migrate -database "postgres://$(DB_USERNAME):$(DB_PASSWORD)@$(DB_HOST):$(DB_PORT)/$(DB_NAME)?$(DB_PARAMS)" -path db/migrations force $(MIGRATE_VERSION)
 
 .PHONY: clean
-clean: migrate-down
+clean: migrate-drop
 	@rm -rf bin/
 
 .PHONY: docker-up
